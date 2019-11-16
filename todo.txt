@@ -1,0 +1,9 @@
+To-do list
+----------
+
+Arthur
+- Model MCMC in `lensfit.ipynb`
+- How to get MCMC to work in complicated contexts
+- parallelization in `emcee` (if I'll be using that)
+
+Questions
