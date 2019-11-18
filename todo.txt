@@ -2,8 +2,17 @@ To-do list
 ----------
 
 Arthur
-- Model MCMC in `lensfit.ipynb`
-- How to get MCMC to work in complicated contexts
-- parallelization in `emcee` (if I'll be using that)
+- Figure out good bounds for MCMC variables
+  - In particular, use the relation between rsang, alphars, and the physical mass and truncation radius
+  - Try fitting directly in terms of physical parameters, if that's not too difficult
+- `emcee_subfit.ipynb` : figure out fit parameters as a function of redshift (get function from Cagan)
+- `emcee_multifit.ipynb` : investigate how well we can learn multiple subhalo/interloper positions
++ How to get MCMC to work in complicated contexts
++ parallelization in `emcee` (if I'll be using that)
+  - parallelization using MPI (important if we want to use the cluster for MCMC)
+- total fit, where we adjust main lens parameters at the same time as interloper/subhalo parameters
+- fitting interlopers as interlopers with z as a parameter (will this be agonizingly slow?)
+- Use `dynesty` to get optimal fit!
+  + getting started
 
 Questions
