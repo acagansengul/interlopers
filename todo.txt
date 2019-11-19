@@ -14,5 +14,10 @@ Arthur
 - fitting interlopers as interlopers with z as a parameter (will this be agonizingly slow?)
 - Use `dynesty` to get optimal fit!
   + getting started
+  - mucking around with hyperparameters
++ Use pyswarms to do a particle swarm (I got confused and thought dynesty was particle swarm)
+  - Figure out how accurate you can make it for zd > zl and zd < zl
+  - Figure out why the masses are always wrong?
+- Try tNFW instead of NFW -- maybe this will solve all the problems?
 
 Questions
