@@ -304,4 +304,4 @@ class DefaultImage:
                                       kwargs_source=self.kwargs_light_source,
                                       kwargs_lens_light=self.kwargs_light_lens)#, kwargs_ps=kwargs_ps)
 
-        
+
