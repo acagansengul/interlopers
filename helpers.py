@@ -97,6 +97,17 @@ def inv_alpha_s(alpha_s,rs,zd,zs):
     con = (1./np.pi)*gfunc(200.)*(1.-np.log(2))
     return (alpha_s/con)*((rs_mpc**2.)*sigma_cr(zd,zs))
 
+def get_mass_back(rsang, alphars, zd, zs):
+    # TODO: make sure this is actually correct!!
+    
+    '''Starts with NFW rsang and alphars.
+    Returns original NFW mass (out to R200?) in Msun.'''
+    rs = inv_rs_angle(zd, rsang).to(u.Mpc).value
+    mass = inv_alpha_s(alphars, rs, zd, zs).to(u.Msun)
+    return mass.to(u.Msun).value
+
+
+
 class DefaultImage:
     def __init__(self, N, seed=333, zl=0.2, zd=0.2, zs=1.0):
         self.N = N
