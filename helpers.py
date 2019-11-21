@@ -10,27 +10,23 @@ Functionality:
 # some standard python imports #
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.cm as cms
+# import matplotlib.cm as cms
 #%matplotlib inline
 
 from lenstronomy.LensModel.lens_model import LensModel
-from lenstronomy.LensModel.Solver.lens_equation_solver import LensEquationSolver
-import lenstronomy.Plots.output_plots as lens_plot
+# from lenstronomy.LensModel.Solver.lens_equation_solver import LensEquationSolver
+# import lenstronomy.Plots.output_plots as lens_plot
 from lenstronomy.LightModel.light_model import LightModel
 import lenstronomy.Util.param_util as param_util
-from lenstronomy.PointSource.point_source import PointSource
+# from lenstronomy.PointSource.point_source import PointSource
 from lenstronomy.Data.pixel_grid import PixelGrid
 from lenstronomy.ImSim.image_model import ImageModel
 from lenstronomy.Data.psf import PSF
-import lenstronomy.Util.image_util as image_util
-from lenstronomy.Workflow.fitting_sequence import FittingSequence
+# import lenstronomy.Util.image_util as image_util
+# from lenstronomy.Workflow.fitting_sequence import FittingSequence
 
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
-
-import copy
-
-import pickle
 
 def ADD(z1,z2):
     ## This is a function that computes the angular diameter distance
@@ -47,11 +43,13 @@ def sigma_cr(zd,zs):
 def gfunc(c):
     ## This is the g(c) function that is defined
     ## commonly in NFW profiles.
+    # TODO: check that this still works with tNFW
     a = np.log(1.+c) - (c/(1.+c))
     return 1./a
 
 def rs_angle(zd,rs): 
     ##takes in interloper redshift, gives you the scale redius in angular units
+    # TODO: check that this still works with tNFW
     Dd = ADD(0,zd)
     rs_mpc = rs*u.Mpc
     return ((1./4.848e-6)*rs_mpc)/Dd ##gives in arcsec
@@ -59,6 +57,7 @@ def rs_angle(zd,rs):
 def alpha_s(m,rs,zd,zs):
     ##takes in subhalo mass, scale radius, interloper redshift, source redshift
     ##returns the angular deflection at scale radius
+    # TODO: check that this still works with tNFW
     m_msun = m*u.M_sun
     rs_mpc = rs*u.Mpc
     con = (1./np.pi)*gfunc(200.)*(1.-np.log(2))
@@ -86,6 +85,7 @@ def xi_to_pix(xi,z,pixsize,pixnum):
     return (xi_to_x(xi,z))/pixsize + pixnum/2.
 def inv_rs_angle(zd,rs_angle):
     ## takes in the rs angle in arcsec gives rs in in MPC
+    # TODO: check that this still works with tNFW
     Dd = ADD(0,zd)
     return 4.848e-6*Dd*rs_angle
 
@@ -93,13 +93,14 @@ def inv_rs_angle(zd,rs_angle):
 def inv_alpha_s(alpha_s,rs,zd,zs):
     ## takes in subhalo angular deflection at scale radius, scale radius,
     ## interloper redshift and source redshift and returns interloper mass
+    # TODO: check that this still works with tNFW
     rs_mpc = rs*u.Mpc
     con = (1./np.pi)*gfunc(200.)*(1.-np.log(2))
     return (alpha_s/con)*((rs_mpc**2.)*sigma_cr(zd,zs))
 
 def get_mass_back(rsang, alphars, zd, zs):
     # TODO: make sure this is actually correct!!
-    
+    # TODO: check that this still works with tNFW
     '''Starts with NFW rsang and alphars.
     Returns original NFW mass (out to R200?) in Msun.'''
     rs = inv_rs_angle(zd, rsang).to(u.Mpc).value
@@ -171,9 +172,6 @@ class DefaultImage:
                        ##  this times bigger than the einstein radius of the lens
         # Perturbers are uniformly distributed within a disk of radius `disc_size * r_theta_lens`
         r2s = ((disc_size*r_theta_lens)**2.)*(np.random.rand(N,M))
-        # let's cheat to make this more interesting (TODO: change this back)
-        #r2s = (r_theta_lens**2.)*np.random.uniform(.9,1.1,size=(N,M))
-
 
         rss = np.sqrt(r2s)
         theta_p = 2.*np.pi*(np.random.rand(N,M))
@@ -203,7 +201,7 @@ class DefaultImage:
 
         ## Setting lens_model_list and redshift_list
         lens_model_main = ['SPEP']
-        lens_model_interlopers = ['CONVERGENCE']+['NFW' for i in range(N)]
+        lens_model_interlopers = ['CONVERGENCE']+['TNFW' for i in range(N)]
         redshift_main = [zl]
         redshift_interlopers = [zd]+[zd for i in range(N)]
         # (unfortunately, we need to give the redshifts in increasing order, so we have two cases)
@@ -231,6 +229,7 @@ class DefaultImage:
             center_nfw_y = xi_to_x(self.ys[i,k],zd)
 
             kwargs_nfw = {'Rs':self.rsang,'alpha_Rs':self.alphars,
+                          'r_trunc':20*self.rsang, # we'll stick with 20 for now
                           'center_x': center_nfw_x, 'center_y': center_nfw_y}
             kwargs_interlopers.append(kwargs_nfw)
 

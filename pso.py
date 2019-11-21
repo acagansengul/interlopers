@@ -57,7 +57,7 @@ class PSOFit():
 
         # In[4]:
 
-        lens_model_fit_list = ['SPEP']+['NFW']*N if zl < zd else ['NFW']*N+['SPEP']
+        lens_model_fit_list = ['SPEP']+['TNFW']*N if zl < zd else ['TNFW']*N+['SPEP']
         lens_model_fit = LensModel(lens_model_list=lens_model_fit_list,
                                  z_source=zs, multi_plane=False)
 
@@ -86,8 +86,8 @@ class PSOFit():
 
         def args_to_img(args):
             assert(len(args) == 2*N+2)
-            rsang = args[0]
-            alphars = args[1]
+            rsang = 10**args[0]
+            alphars = 10**args[1]
             xs = args[2:N+2]
             ys = args[N+2:]
         #     rsang = image_obj.rsang
@@ -100,6 +100,7 @@ class PSOFit():
             my_nfw_list = []
             for i in range(N):
                 my_nfw = {'Rs': rsang, 'alpha_Rs': alphars,
+                          'r_trunc': 20*rsang, # should be consistent with helpers.py
                           'center_x': xs[i], 'center_y': ys[i]}
                 my_nfw_list.append(my_nfw)
 
@@ -151,10 +152,10 @@ class PSOFit():
 
         ## Bounds ##
 
-        pos_lim = 100
+        pos_lim = 15
         
-        max_bound = [5,3e-3] + [pos_lim]*(2*N) # cost 0.000193 with {'c1': 0.25, 'c2': 0.6, 'w':0.9}. 32 particles
-        min_bound = [0,0] + [-pos_lim]*(2*N)
+        max_bound = [np.log10(1), np.log10(1e-3)] + [pos_lim]*(2*N) # cost 0.000193 with {'c1': 0.25, 'c2': 0.6, 'w':0.9}. 32 particles
+        min_bound = [np.log10(3e-3), np.log10(1e-8)] + [-pos_lim]*(2*N)
         bounds = (np.array(min_bound),np.array(max_bound))
 
 
@@ -162,8 +163,8 @@ class PSOFit():
 
 
         # Set-up hyperparameters
-        # options = {'c1': 0.5, 'c2': 0.3, 'w':0.9} # default values
-        options = {'c1': 0.25, 'c2': 0.6, 'w':0.9}
+        options = {'c1': 0.5, 'c2': 0.3, 'w':0.9} # default values
+        # options = {'c1': 0.25, 'c2': 0.6, 'w':0.9}
         # I believe the hyperparameters are as follows:
         # w: constant inertia weight
         # c1: cognitive parameter
@@ -171,8 +172,9 @@ class PSOFit():
         # (see this site: https://nathanrooy.github.io/posts/2016-08-17/simple-particle-swarm-optimization-with-python/ )
 
         # Call instance of PSO
-        optimizer = ps.single.GlobalBestPSO(n_particles=32, dimensions=ndim,
+        optimizer = ps.single.GlobalBestPSO(n_particles=64, dimensions=ndim,
                                             options=options, bounds=bounds)
+        # ^ I want ftol but for absolute cost ^
 
 
         # In[27]:
@@ -189,7 +191,14 @@ class PSOFit():
         
         # return self.pos # not actually returning anything, since this is part of the initialization
 
-    
+        # And finally, for comparison:
+        nfw_idx = 2 if zl < zd else 1 # index of first nfw lens
+        self.almost_truth_args = ([np.log10(self.image_obj.rsang),
+                                   np.log10(self.image_obj.alphars)]
+                                  +[self.image_obj.kwargs_lens[nfw_idx+i]['center_x'] for i in range(self.N)]
+                                  +[self.image_obj.kwargs_lens[nfw_idx+i]['center_y'] for i in range(self.N)])
+        self.almost_truth_img = args_to_img(self.almost_truth_args)
+        
 # In[28]:
 
 
