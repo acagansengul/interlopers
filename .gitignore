@@ -6,5 +6,4 @@ github_test_image_YPIX.npy
 chains.p
 *~
 __pycache__
-pso_fit_list1.p
-pso_fit_list2.p
+mydict.p

@@ -30,7 +30,7 @@ import lenstronomy.Util.image_util as image_util
 from lenstronomy.Workflow.fitting_sequence import FittingSequence
 
 class PSOFit():
-    def __init__(self, N, zd, zl, zs, run=True, seed=333, numiter=200):
+    def __init__(self, N, zd, zl, zs, run=True, seed=333, numiter=200, near_ring=False):
         """
         N is the number of subhalos
         """
@@ -38,17 +38,18 @@ class PSOFit():
         self.zd = zd
         self.zl = zl
         self.zs = zs
+        self.near_ring = near_ring
 
         if run: # in case the user wants to initialize these first and run them later
-            self.run_pso(seed, numiter)
+            self.run_pso(seed, numiter, near_ring)
     
-    def run_pso(self, seed=333, numiter=200):
+    def run_pso(self, seed=333, numiter=200, near_ring=False):
         # # Generate original image
 
         self.seed, self.numiter = seed, numiter
         N, zs, zl, zd = self.N, self.zs, self.zl, self.zd
         
-        self.image_obj = DefaultImage(N, zl=zl, zd=zd, zs=zs, seed=seed)
+        self.image_obj = DefaultImage(N, zl=zl, zd=zd, zs=zs, seed=seed, near_ring=near_ring)
         image_obj = self.image_obj
         self.image = image_obj.image
 
@@ -154,8 +155,11 @@ class PSOFit():
 
         pos_lim = 15
         
-        max_bound = [np.log10(1), np.log10(1e-3)] + [pos_lim]*(2*N) # cost 0.000193 with {'c1': 0.25, 'c2': 0.6, 'w':0.9}. 32 particles
-        min_bound = [np.log10(3e-3), np.log10(1e-8)] + [-pos_lim]*(2*N)
+        # bounds used to be 3e-3 to 1 for rsang, 1e-8 to 1e-3 for alphars (when mass was 1e7)
+        # using 1e-5 to 1e0 for alphars (when mass is 1e9)
+        
+        max_bound = [np.log10(1), np.log10(1e-0)] + [pos_lim]*(2*N) # cost 0.000193 with {'c1': 0.25, 'c2': 0.6, 'w':0.9}. 32 particles
+        min_bound = [np.log10(3e-3), np.log10(1e-5)] + [-pos_lim]*(2*N)
         bounds = (np.array(min_bound),np.array(max_bound))
 
 

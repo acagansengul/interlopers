@@ -110,11 +110,12 @@ def get_mass_back(rsang, alphars, zd, zs):
 
 
 class DefaultImage:
-    def __init__(self, N, seed=333, zl=0.2, zd=0.2, zs=1.0):
+    def __init__(self, N, seed=333, zl=0.2, zd=0.2, zs=1.0, near_ring=False):
         self.N = N
         self.zl = zl
         self.zd = zd
-        self.zs = zs        
+        self.zs = zs       
+        self.near_ring = near_ring
         
         np.random.seed(seed)
 
@@ -171,7 +172,23 @@ class DefaultImage:
         disc_size = 2. ##  interlopers are randomly distributed to a disk that is this
                        ##  this times bigger than the einstein radius of the lens
         # Perturbers are uniformly distributed within a disk of radius `disc_size * r_theta_lens`
-        r2s = ((disc_size*r_theta_lens)**2.)*(np.random.rand(N,M))
+        ## r2s = ... ##
+        if near_ring:
+            # TODO: figure out placement to put the halo near the ring.
+            # First, figure out what radius we should put the subhalo at
+            if zd <= zl: # subhalo close (simple)
+                r_aim = x_to_xi(theta_lens, zd)
+            else: # subhalo far
+                chil = ADD(0,zl)*(1+zl)
+                chid = ADD(0,zd)*(1+zd)
+                chis = ADD(0,zs)*(1+zs)
+                r_aim = (chis-chid)/(chis-chil)*r_theta_lens
+                
+            r2low = (r_aim * 0.9)**2
+            r2high = (r_aim * 1.1)**2
+            r2s = np.random.uniform(r2low, r2high, size=(N,M)) # TODO: test this
+        else:
+            r2s = ((disc_size*r_theta_lens)**2.)*(np.random.rand(N,M))
 
         rss = np.sqrt(r2s)
         theta_p = 2.*np.pi*(np.random.rand(N,M))
@@ -189,7 +206,7 @@ class DefaultImage:
     #     xpixs[j] = xi_to_pix(self.xs,zds[j],pixsize,200)   ## AT THAT REDSHIFT CALCULATING THE INTERLOPER
     #     ypixs[j] = xi_to_pix(self.ys,zds[j],pixsize,200)   ## POSITIONS. (THEY ARE RANDOMLY GENERATED IN THE EARLIER BOX)
 
-        m =1.0e7 # mass of interlopers
+        m = 1.0e9 # mass of interlopers (used to be 1e7)
         #zs = 1.
         #zd = zds[j] # interloper redshift
         rs = 0.001  # interloper scale radius r_s
