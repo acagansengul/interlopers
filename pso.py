@@ -157,9 +157,13 @@ class PSOFit():
         
         # bounds used to be 3e-3 to 1 for rsang, 1e-8 to 1e-3 for alphars (when mass was 1e7)
         # using 1e-5 to 1e0 for alphars (when mass is 1e9)
-        
-        max_bound = [np.log10(1), np.log10(1e-0)] + [pos_lim]*(2*N) # cost 0.000193 with {'c1': 0.25, 'c2': 0.6, 'w':0.9}. 32 particles
-        min_bound = [np.log10(3e-3), np.log10(1e-5)] + [-pos_lim]*(2*N)
+
+        # max_bound = [np.log10(1), np.log10(1e-0)] + [pos_lim]*(2*N) # cost 0.000193 with {'c1': 0.25, 'c2': 0.6, 'w':0.9}. 32 particles
+        # min_bound = [np.log10(3e-3), np.log10(1e-5)] + [-pos_lim]*(2*N)
+
+        # rsang, alphars, positions...
+        max_bound = [np.log10(1e2), np.log10(1e-0)] + [pos_lim]*(2*N) # cost 0.000193 with {'c1': 0.25, 'c2': 0.6, 'w':0.9}. 32 particles
+        min_bound = [np.log10(3e-3), np.log10(1e-4)] + [-pos_lim]*(2*N)
         bounds = (np.array(min_bound),np.array(max_bound))
 
 
