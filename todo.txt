@@ -5,14 +5,13 @@ Arthur
 + Figure out fit parameters as a function of redshift
   + (Cagan is working on this -- might have to email Simon Birrer)
 + Investigate how well we can learn multiple subhalo/interloper positions (even 3 is kind of too much)
-- parallelization using MPI? (If we want to use the cluster)
+(- parallelization using MPI? (If we want to use the cluster) -- I think you use MPIPool which is similar to regular Pool)
 - total fit, where we adjust main lens parameters at the same time as interloper/subhalo parameters (maybe not necessary)
 - fitting interlopers as interlopers with z as a parameter (will this be agonizingly slow?)
 
 + Use pyswarms to do a particle swarm (I got confused and thought dynesty was particle swarm)
   + Figure out how accurate you can make it for zd > zl and zd < zl
-  - Figure out why the masses are always wrong?
-+ Try tNFW instead of NFW -- maybe this will solve all the problems?
++ Try tNFW instead of NFW
 (- Separate out args_to_img function in pso.py)
 - Try fitting to multiplane
 
@@ -23,7 +22,6 @@ Near-future directions
 - Try adjusting masses but fitting to the pixel power spectrum
 (- Redo my pso_meff.ipynb but for point masses)
 - Try different subhalo masses (1e7 gives ~20 pixels change maximum)
-
 
 
 Questions
