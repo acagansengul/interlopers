@@ -333,6 +333,8 @@ class DefaultImage:
                                       kwargs_source=self.kwargs_light_source,
                                       kwargs_lens_light=self.kwargs_light_lens)#, kwargs_ps=kwargs_ps)
 
+"""
+Below is the old version of the class CustomImage:
 
 class CustomImage:
     # For now, we'll still assume only one interloper plane.
@@ -561,8 +563,198 @@ class CustomImage:
         self.image = imageModel.image(kwargs_lens=self.kwargs_lens,
                                       kwargs_source=self.kwargs_light_source,
                                       kwargs_lens_light=self.kwargs_light_lens)#, kwargs_ps=kwargs_ps)
+"""
+
+class CustomImage:
+    # todo: modify to handle any number of interloper planes
+
+    def x_to_pix(self, x, z=None):
+        # from x to pixel on the lens plane
+        # todo: rewrite so that it works with any redshift (using double-cone projection)
+        if z == None:
+            z = self.zl
+        return xi_to_pix(x_to_xi(x, z), self.zl, self.pixsize, self.pixnum)
+    
+    def __init__(self, xpos_list, ypos_list, redshift_list, zl=0.2, zs=1.0, m=1e7):
+        assert(len(xpos_list) == len(ypos_list))
+        assert(len(xpos_list) == len(redshift_list))
+
+        self.xpos_list = xpos_list
+        self.ypos_list = ypos_list
+        self.redshift_list = redshift_list
+        self.N = len(xpos_list) # number of interlopers+subhalos
+        N = self.N
+        self.zl = zl
+        self.zs = zs
+        self.m = m
+        
+        ## SOURCE PROPERTIES ###############################################################################
+        r_sersic_source = 10.0
+        e1s, e2s = param_util.phi_q2_ellipticity(phi=0.8, q=0.2)
+        beta_ras, beta_decs = [1.7],[0.3]#this is the source position on the source plane
+
+        n_sersic_source = 1.5
+
+        ## SOURCE-CLUMP PROPERTIES #########################################################################
+        r_sersic_source_clumps = 1/3.
+        N_clump = 0
+        clumprandx = np.random.rand(N_clump)
+        clumprandy = np.random.rand(N_clump)
+
+        source_scatter = 1. ## This is how wide the scatter of the clumps over the smooth source
+
+        n_sersic_source_clumps = 1.5
+
+        ####################################################################################################
 
 
+
+        ## LENS PROPERTIES #################################################################################
+        theta_lens = 10.
+        r_theta_lens = x_to_xi(theta_lens,zl)
+        e1, e2 = param_util.phi_q2_ellipticity(phi=-0.9, q=0.8)
+        gamma = 2.
+
+        center_lens_x, center_lens_y = 0.,0.
+        ####################################################################################################
+
+
+
+        ## IMAGE PROPERTIES ################################################################################
+        self.pixsize = 0.2
+        self.pixnum = 200
+        ####################################################################################################
+
+
+
+        ## INTERLOPER PROPERTIES ########################################################################### 
+
+        # for easier plotting only (current version only works when all the interlopers are at the lens redshift):
+        # self.plot_xpixs = [self.x_to_pix(xpos) for xpos in xpos_list]
+        # self.plot_ypixs = [self.y_to_pix(ypos), zl,pixsize,pixnum) for ypos in ypos_list]
+
+        beta_ra, beta_dec = beta_ras[0], beta_decs[0]
+
+        # self.m = 1.0e7 # mass of interlopers (used to be 1e7, and then 1e9)
+        self.rs = 0.001  # interloper scale radius r_s
+        # A = 80**2 ## in arcsec ## IGNORE THIS, THIS WAS FOR NEGATIVE CONVERGENCE
+
+        # kext = float(k_ext(N,m,A,zl,zs,pixsize))
+        # note that there is no more self.rsang or self.alphars
+
+        ## LENS model and redshifts
+        # In the unsorted list, we'll put the main lens first
+        lens_model_unsorted = ['SPEP'] + ['TNFW' for i in range(N)]
+        redshifts_unsorted = [self.zl] + list(self.redshift_list)
+
+        # Then we sort everything
+        sort_idx = np.argsort(redshifts_unsorted)
+        lens_model_sorted = [lens_model_unsorted[i] for i in sort_idx]
+        redshifts_sorted = [redshifts_unsorted[i] for i in sort_idx]
+
+        self.main_lens_idx = np.where(sort_idx == 0)[0][0] # which lens is the main lens?
+
+        self.lens_model_mp = LensModel(lens_model_list=lens_model_sorted,
+                                       z_source = self.zs,
+                                       lens_redshift_list=redshifts_sorted,
+                                       multi_plane=True)
+
+        # LENS kwargs
+        self.kwargs_spep = {'theta_E': theta_lens, 'e1': e1, 'e2': e2, 
+                            'gamma': gamma, 'center_x': center_lens_x, 'center_y': center_lens_y}
+
+        kwargs_unsorted = [self.kwargs_spep] # (+ will append interlopers)
+        for i in range(N):
+            center_nfw_x = xpos_list[i]
+            center_nfw_y = ypos_list[i]
+
+            rsang = float(rs_angle(self.redshift_list[i],self.rs))
+            alphars = float(alpha_s(self.m,self.rs,self.redshift_list[i],zs))
+            
+            kwargs_nfw = {'Rs':rsang, 'alpha_Rs':alphars,
+                          'r_trunc':20*rsang, # we'll stick with 20 for now
+                          'center_x': center_nfw_x, 'center_y': center_nfw_y}
+            kwargs_unsorted.append(kwargs_nfw)
+
+        self.kwargs_lens = [kwargs_unsorted[i] for i in sort_idx]
+        
+        ########################################################################
+        # set up the list of light models to be used #
+
+        # SOURCE light
+        source_light_model_list = ['SERSIC_ELLIPSE']
+        for i in range(N_clump):
+            source_light_model_list.append('SERSIC')
+
+        self.light_model_source = LightModel(light_model_list = source_light_model_list)
+
+        # LENS light
+        lens_light_model_list = ['SERSIC_ELLIPSE']
+        self.light_model_lens = LightModel(light_model_list = lens_light_model_list)
+
+        # SOURCE light kwargs
+        self.kwargs_light_source = [{'amp': 1000., 'R_sersic': r_sersic_source, 'n_sersic': n_sersic_source, 
+                              'e1': e1s, 'e2': e2s, 'center_x': beta_ra , 'center_y': beta_dec}]
+        for i in range(N_clump):
+            self.kwargs_light_source.append({'amp': 1000, 'R_sersic': r_sersic_source_clumps, 'n_sersic': n_sersic_source_clumps,
+                                        'center_x': beta_ra+source_scatter*(clumprandx[i]-.5), 
+                                        'center_y': beta_dec+source_scatter*(clumprandy[i]-.5)})
+
+        # LENS light kwargs
+        self.kwargs_light_lens = [{'amp': 1500, 'R_sersic': theta_lens, 'n_sersic': gamma, 
+                              'e1': e1, 'e2': e2, 'center_x': center_lens_x , 'center_y': center_lens_y}]
+
+        ################################################################################
+        # Setup data_class, i.e. pixelgrid #
+        ra_at_xy_0 = -0.5*self.pixnum*self.pixsize # coordinate in angles (RA/DEC) at the position of the pixel edge (0,0)
+        dec_at_xy_0 = -0.5*self.pixnum*self.pixsize # ''
+        transform_pix2angle = np.array([[1, 0], [0, 1]]) * self.pixsize  # linear translation matrix of a shift in pixel in a shift in coordinates
+        kwargs_pixel = {'nx': self.pixnum, 'ny': self.pixnum,  # number of pixels per axis
+                        'ra_at_xy_0': ra_at_xy_0,  # RA at pixel (0,0)
+                        'dec_at_xy_0': dec_at_xy_0,  # DEC at pixel (0,0)
+                        'transform_pix2angle': transform_pix2angle} 
+        self.pixel_grid = PixelGrid(**kwargs_pixel)
+
+        # Setup PSF #
+        kwargs_psf = {'psf_type': 'GAUSSIAN',  # type of PSF model (supports 'GAUSSIAN' and 'PIXEL')
+                      'fwhm': 0.01,  # full width at half maximum of the Gaussian PSF (in angular units)
+                      'pixel_size': self.pixsize  # angular scale of a pixel (required for a Gaussian PSF to translate the FWHM into a pixel scale)
+                     }
+        self.psf = PSF(**kwargs_psf)
+        kernel = self.psf.kernel_point_source
+
+        
+        # define the numerics #
+        self.kwargs_numerics = {'supersampling_factor': 1, # each pixel gets super-sampled (in each axis direction) 
+                          'supersampling_convolution': False}
+        # initialize the Image model class by combining the modules we created above #
+        self.imageModel = ImageModel(data_class=self.pixel_grid, psf_class=self.psf,
+                                     lens_model_class=self.lens_model_mp,
+                                     source_model_class=self.light_model_source,
+                                     lens_light_model_class=self.light_model_lens,
+                                     kwargs_numerics=self.kwargs_numerics)
+        # simulate image with the parameters we have defined above #
+        self.image = self.imageModel.image(kwargs_lens=self.kwargs_lens,
+                                           kwargs_source=self.kwargs_light_source,
+                                           kwargs_lens_light=self.kwargs_light_lens)#, kwargs_ps=kwargs_ps)
+
+    def calc_div_curl(self):
+        # Calculates divergence and curl of alpha (from ray shooting)
+        
+        self.alphamat_x = np.zeros((self.pixnum, self.pixnum))
+        self.alphamat_y = np.zeros((self.pixnum, self.pixnum))
+        for xpix in range(self.pixnum):
+            for ypix in range(self.pixnum):
+                image_xy = self.pixel_grid.map_pix2coord(xpix, ypix) # in angle units
+                source_xy = self.lens_model_mp.ray_shooting(image_xy[0], image_xy[1], self.kwargs_lens)
+                self.alphamat_x[xpix,ypix] = image_xy[0] - source_xy[0]
+                self.alphamat_y[xpix,ypix] = image_xy[1] - source_xy[1]
+
+        self.divmat = (np.gradient(self.alphamat_x, self.pixsize)[0]
+                       + np.gradient(self.alphamat_y, self.pixsize)[1])
+        self.curlmat = (np.gradient(self.alphamat_y, self.pixsize)[0]
+                        - np.gradient(self.alphamat_x, self.pixsize)[1])
+        return self.divmat, self.curlmat
 
 class PoolResults:
     """
