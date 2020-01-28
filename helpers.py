@@ -575,7 +575,7 @@ class CustomImage:
             z = self.zl
         return xi_to_pix(x_to_xi(x, z), self.zl, self.pixsize, self.pixnum)
     
-    def __init__(self, xpos_list, ypos_list, redshift_list, zl=0.2, zs=1.0, m=1e7):
+    def __init__(self, xpos_list, ypos_list, redshift_list, zl=0.2, zs=1.0, m=1e7, pixsize=0.2, pixnum=200):
         assert(len(xpos_list) == len(ypos_list))
         assert(len(xpos_list) == len(redshift_list))
 
@@ -587,6 +587,9 @@ class CustomImage:
         self.zl = zl
         self.zs = zs
         self.m = m
+
+        self.pixsize = pixsize
+        self.pixnum = pixnum
         
         ## SOURCE PROPERTIES ###############################################################################
         r_sersic_source = 10.0
@@ -621,8 +624,8 @@ class CustomImage:
 
 
         ## IMAGE PROPERTIES ################################################################################
-        self.pixsize = 0.2
-        self.pixnum = 200
+        # self.pixsize = 0.2
+        # self.pixnum = 200
         ####################################################################################################
 
 
