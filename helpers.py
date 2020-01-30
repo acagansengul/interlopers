@@ -758,6 +758,37 @@ class CustomImage:
         self.curlmat = (np.gradient(self.alphamat_y, self.pixsize)[0]
                         - np.gradient(self.alphamat_x, self.pixsize)[1])
         return self.divmat, self.curlmat
+    
+    def div_curl_simple(self):
+       # Calculates divergence and curl of alpha by subtracting neighboring pixels
+        self.alphamat_x = np.zeros((self.pixnum, self.pixnum))
+        self.alphamat_y = np.zeros((self.pixnum, self.pixnum))
+        for xpix in range(self.pixnum):
+            for ypix in range(self.pixnum):
+                image_xy = self.pixel_grid.map_pix2coord(xpix, ypix) # in angle units
+                source_xy = self.lens_model_mp.ray_shooting(image_xy[0], image_xy[1], self.kwargs_lens)
+                self.alphamat_x[xpix,ypix] = image_xy[0] - source_xy[0]
+                self.alphamat_y[xpix,ypix] = image_xy[1] - source_xy[1]
+                
+        self.divmat = np.zeros([pixres-2,pixres-2])
+        self.curlmat = np.zeros([pixres-2,pixres-2])
+        
+        def divfunc(vec_x, vec_y,i,j):
+            diffx = vec_x[i][j+1] - vec_x[i][j-1]
+            diffy = vec_y[i+1][j] - vec_y[i-1][j]
+            return diffx + diffy
+
+        def curlfunc(vec_x, vec_y,i,j):
+            offy = vec_y[i][j+1] - vec_y[i][j-1]
+            offx = vec_x[i+1][j] - vec_x[i-1][j]
+            return offy - offx 
+        
+        for i in range(1,pixres-1):
+            for j in range(1,pixres-1):
+                self.divmat[i-1][j-1] = divfunc(self.alphamat_x,self.alphamat_y,i,j)
+                self.curlmat[i-1][j-1] = curlfunc(self.alphamat_x,self.alphamat_y,i,j)
+                
+        return self.divmat, self.curlmat
 
 class PoolResults:
     """
