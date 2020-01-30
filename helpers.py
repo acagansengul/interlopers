@@ -783,8 +783,8 @@ class CustomImage:
             offx = vec_x[i+1][j] - vec_x[i-1][j]
             return (offy - offx)*(0.5/self.pixsize)
         
-        for i in range(1,pixres-1):
-            for j in range(1,pixres-1):
+        for i in range(1,self.pixnum-1):
+            for j in range(1,self.pixnum-1):
                 self.divmat[i-1][j-1] = divfunc(self.alphamat_x,self.alphamat_y,i,j)
                 self.curlmat[i-1][j-1] = curlfunc(self.alphamat_x,self.alphamat_y,i,j)
                 
