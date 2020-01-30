@@ -785,8 +785,8 @@ class CustomImage:
         
         for i in range(1,self.pixnum-1):
             for j in range(1,self.pixnum-1):
-                self.divmat[i-1][j-1] = divfunc(self.alphamat_x,self.alphamat_y,i,j)
-                self.curlmat[i-1][j-1] = curlfunc(self.alphamat_x,self.alphamat_y,i,j)
+                self.divmat[i-1][j-1] = divfunc(self.alphamat_y,self.alphamat_x,i,j)
+                self.curlmat[i-1][j-1] = curlfunc(self.alphamat_y,self.alphamat_x,i,j)
                 
         return self.divmat, self.curlmat
 
