@@ -770,8 +770,8 @@ class CustomImage:
                 self.alphamat_x[xpix,ypix] = image_xy[0] - source_xy[0]
                 self.alphamat_y[xpix,ypix] = image_xy[1] - source_xy[1]
                 
-        self.divmat = np.zeros([pixres-2,pixres-2])
-        self.curlmat = np.zeros([pixres-2,pixres-2])
+        self.divmat = np.zeros([self.pixnum-2,self.pixnum-2])
+        self.curlmat = np.zeros([self.pixnum-2,self.pixnum-2])
         
         def divfunc(vec_x, vec_y,i,j):
             diffx = vec_x[i][j+1] - vec_x[i][j-1]
