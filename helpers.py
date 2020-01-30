@@ -776,12 +776,12 @@ class CustomImage:
         def divfunc(vec_x, vec_y,i,j):
             diffx = vec_x[i][j+1] - vec_x[i][j-1]
             diffy = vec_y[i+1][j] - vec_y[i-1][j]
-            return diffx + diffy
+            return (diffx + diffy)*(0.5/self.pixsize)
 
         def curlfunc(vec_x, vec_y,i,j):
             offy = vec_y[i][j+1] - vec_y[i][j-1]
             offx = vec_x[i+1][j] - vec_x[i-1][j]
-            return offy - offx 
+            return (offy - offx)*(0.5/self.pixsize)
         
         for i in range(1,pixres-1):
             for j in range(1,pixres-1):
