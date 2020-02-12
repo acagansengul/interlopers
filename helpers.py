@@ -895,6 +895,39 @@ class CustomImage:
                         - np.gradient(self.alphamat_x, self.pixsize)[1])
         return self.divmat, self.curlmat
     
+    def calc_div_curl_5pt(self):
+        ## Calculates divergence and curl using 5pt stencil.
+        self.alphamat_x = np.zeros((self.pixnum, self.pixnum))
+        self.alphamat_y = np.zeros((self.pixnum, self.pixnum))
+        for xpix in range(self.pixnum):
+            for ypix in range(self.pixnum):
+                image_xy = self.pixel_grid.map_pix2coord(xpix, ypix) # in angle units
+                source_xy = self.lens_model_mp.ray_shooting(image_xy[0], image_xy[1], self.kwargs_lens)
+                self.alphamat_x[xpix,ypix] = image_xy[0] - source_xy[0]
+                self.alphamat_y[xpix,ypix] = image_xy[1] - source_xy[1]
+                
+        self.divmat = np.zeros([self.pixnum-4,self.pixnum-4])
+        self.curlmat = np.zeros([self.pixnum-4,self.pixnum-4])
+        
+        def divfunc(vec_x, vec_y,i,j):
+            diffx = (-1./12.)*(vec_x[i][j+2] - vec_x[i][j-2])+(2./3.)*(vec_x[i][j+1] - vec_x[i][j-1])
+            diffy = (-1./12.)*(vec_y[i+2][j] - vec_y[i-2][j])+(2./3.)*(vec_y[i+1][j] - vec_y[i-1][j])
+            return (diffx + diffy)*(1./self.pixsize)
+
+        def curlfunc(vec_x, vec_y,i,j):
+            offy = (-1./12.)*(vec_y[i][j+2] - vec_y[i][j-2])+(2./3.)*(vec_y[i][j+1] - vec_y[i][j-1])
+            offx = (-1./12.)*(vec_x[i+2][j] - vec_x[i-2][j])+(2./3.)*(vec_x[i+1][j] - vec_x[i-1][j])
+            return (offy - offx)*(1./self.pixsize)
+        
+        for i in range(2,self.pixnum-2):
+            for j in range(2,self.pixnum-2):
+                self.divmat[i-2][j-2] = divfunc(self.alphamat_y,self.alphamat_x,i,j)
+                self.curlmat[i-2][j-2] = curlfunc(self.alphamat_y,self.alphamat_x,i,j)
+                
+        return self.divmat, self.curlmat
+        
+        
+    
     def div_curl_simple(self):
        # Calculates divergence and curl of alpha by subtracting neighboring pixels
         self.alphamat_x = np.zeros((self.pixnum, self.pixnum))
