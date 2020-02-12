@@ -36,6 +36,11 @@ def ADD(z1,z2):
     cosmo = FlatLambdaCDM(H0=70, Om0=0.316) 
     return cosmo.angular_diameter_distance_z1z2(z1,z2)
 
+def comdist(z):
+    # Function computes the comoving distance to the given redshift
+    cosmo = FlatLambdaCDM(H0=70, Om0=0.316)
+    return cosmo.comoving_distance(z)
+
 def sigma_cr(zd,zs):
     ## This function calculates the critical surface mass density at
     ## redshift zd, relative to the source redshift zs.
@@ -65,6 +70,39 @@ def alpha_s(m,rs,zd,zs):
     con = (1./np.pi)*gfunc(200.)*(1.-np.log(2))
     return (con*m_msun)/((rs_mpc**2.)*sigma_cr(zd,zs))
 
+def alpha_s_tnfw(m,rs,zd,zs,tau):
+    m_phys = m*u.M_sun # physical mass
+    mass_factor = tau**2 / (tau**2+1)**2 * ((tau**2-1)*np.log(tau) + tau*np.pi - (tau**2+1))
+    # print('not correct, but ignoring mass factor (closer to correct measured convergence)')
+    # mass_factor = 1
+
+    m_tnfw = m_phys / mass_factor
+    # the following code is supposed to match how lenstronomy works, but not necessarily our old `alpha_s`
+    distl = ADD(0,zd).to(u.kpc)
+
+    rs_phys = (rs * u.Mpc).to(u.kpc)
+    rs_ang = (rs_phys / distl) * 648000/np.pi # arcsec
+
+    rho0 = m_tnfw / (2*rs_ang*rs_phys**2 * 2*np.pi) # this formula came from comparing formula 32 in Ana's paper with the function `density_2d` in lenstronomy
+    
+    alpha_rs = rho0 * 4 * rs_ang**2 * (1 - np.log(2)) # this formula came from Simon's code, where rs was in arcsec
+    # todo check that we handle correctly whether rs is angular (arcsec) or physical
+    # print('rs', rs)
+    # print('rs_phys', rs_phys)
+    # print('rs_ang', rs_ang)
+
+    # print('m_phys', m_phys)
+
+
+    # print('mass_factor', mass_factor)
+    # print('m_tnfw', m_tnfw)
+    # print('rho0', rho0)
+    # print('alpha_rs', alpha_rs)
+    # print('sigma_cr', sigma_cr(zd,zs).to(u.Msun/u.kpc**2))
+    # print('final answer', (alpha_rs / sigma_cr(zd,zs)).si)
+    
+    return (alpha_rs / sigma_cr(zd,zs)).si
+    
 def k_ext(N,m,A,zd,zs,pixsize):
     ## FOR NOW THIS IS SET TO ZERO BECAUSE I CAN'T GET IT TO WORK
     m_msun = m*u.M_sun
@@ -109,8 +147,22 @@ def get_mass_back(rsang, alphars, zd, zs):
     mass = inv_alpha_s(alphars, rs, zd, zs).to(u.Msun)
     return mass.to(u.Msun).value
 
+def autoshow(image, vmax=None, ext=None):
+    # helper function like imshow but gets the colors centered at zero
 
+    if vmax == None:
+        vmin = np.min(image)
+        vmax = np.max(image)
+        vmin = min(vmin, -vmax)
+        vmax = max(vmax, -vmin)
+    else:
+        vmin = -vmax
 
+    extent = None if ext==None else [-ext,ext,ext,-ext]
+    plt.imshow(image, vmin=vmin, vmax=vmax, cmap='seismic', extent=extent)
+    plt.colorbar()
+
+"""
 class DefaultImage:
     def __init__(self, N, seed=333, zl=0.2, zd=0.2, zs=1.0, near_ring=False):
         self.N = N
@@ -332,6 +384,8 @@ class DefaultImage:
         self.image = imageModel.image(kwargs_lens=self.kwargs_lens,
                                       kwargs_source=self.kwargs_light_source,
                                       kwargs_lens_light=self.kwargs_light_lens)#, kwargs_ps=kwargs_ps)
+
+"""
 
 """
 Below is the old version of the class CustomImage:
@@ -566,7 +620,6 @@ class CustomImage:
 """
 
 class CustomImage:
-    # todo: modify to handle any number of interloper planes
 
     def x_to_pix(self, x, z=None):
         # from x to pixel on the lens plane
@@ -574,8 +627,33 @@ class CustomImage:
         if z == None:
             z = self.zl
         return xi_to_pix(x_to_xi(x, z), self.zl, self.pixsize, self.pixnum)
+
+    def double_cone_width(self, z):
+        # Return comoving width in kpc
+
+        # First, we calculate the angular extent of this image. Using the
+        # comoving distance, we then calculate the comoving width at the widest
+        # point of the double-cone (widest in comoving distance, at least).
+        view_angle = self.pixsize*self.pixnum * np.pi/648000 # in radians
+        lens_width_com = view_angle * comdist(self.zl) # flat-space trick
+
+        com_z = comdist(z)
+        com_l = comdist(self.zl)
+        com_s = comdist(self.zs)
+        
+        if z < self.zl:
+            width = (com_z / com_l) * lens_width_com
+        else:
+            width = (com_s - com_z)/(com_s - com_l) * lens_width_com
+
+        return width.to(u.kpc).value
     
-    def __init__(self, xpos_list, ypos_list, redshift_list, zl=0.2, zs=1.0, m=1e7, pixsize=0.2, pixnum=200):
+    def __init__(self, xpos_list, ypos_list, redshift_list, m=None, zl=0.2, zs=1.0, pixsize=0.2, pixnum=200, mass_sheets=None, main_theta=0.3):
+        # change: used to take in `m` as a single mass for all interlopers, but
+        # now this can also be a list of masses
+        
+        # `mass_sheets` : default set to True, meaning we should add negative mass sheets to cancel out all the substructure
+        
         assert(len(xpos_list) == len(ypos_list))
         assert(len(xpos_list) == len(redshift_list))
 
@@ -586,15 +664,34 @@ class CustomImage:
         N = self.N
         self.zl = zl
         self.zs = zs
-        self.m = m
+        if m is None:
+            self.mass_list = [1e7] * self.N
+        elif isinstance(m, float):
+            self.mass_list = [m] * self.N
+        else:
+            self.mass_list = m
 
         self.pixsize = pixsize
         self.pixnum = pixnum
+
+        if isinstance(mass_sheets, list) or isinstance(mass_sheets, np.ndarray):
+            self.mass_sheets = mass_sheets
+        elif mass_sheets is None or mass_sheets is True:
+            self.mass_sheets = [True for _ in range(N)]
+        elif mass_sheets is False:
+            self.mass_sheets = [False for _ in range(N)]
+        any_mass_sheets = np.any(self.mass_sheets)
+            
+        self.main_theta = main_theta
         
         ## SOURCE PROPERTIES ###############################################################################
-        r_sersic_source = 10.0
-        e1s, e2s = param_util.phi_q2_ellipticity(phi=0.8, q=0.2)
-        beta_ras, beta_decs = [1.7],[0.3]#this is the source position on the source plane
+        # r_sersic_source = 10.0
+        # e1s, e2s = param_util.phi_q2_ellipticity(phi=0.8, q=0.2)
+        # beta_ras, beta_decs = [1.7],[0.3]#this is the source position on the source plane
+        # let's mess with these parameters a little
+        r_sersic_source = .5
+        e1s, e2s = param_util.phi_q2_ellipticity(phi=0.5, q=0.3)
+        beta_ras, beta_decs = [.01],[.02]#this is the source position on the source plane
 
         n_sersic_source = 1.5
 
@@ -613,7 +710,7 @@ class CustomImage:
 
 
         ## LENS PROPERTIES #################################################################################
-        theta_lens = 10.
+        theta_lens = self.main_theta # used to be 10.
         r_theta_lens = x_to_xi(theta_lens,zl)
         e1, e2 = param_util.phi_q2_ellipticity(phi=-0.9, q=0.8)
         gamma = 2.
@@ -639,16 +736,22 @@ class CustomImage:
         beta_ra, beta_dec = beta_ras[0], beta_decs[0]
 
         # self.m = 1.0e7 # mass of interlopers (used to be 1e7, and then 1e9)
-        self.rs = 0.001  # interloper scale radius r_s
+        # self.rs = 0.001  # interloper scale radius r_s
         # A = 80**2 ## in arcsec ## IGNORE THIS, THIS WAS FOR NEGATIVE CONVERGENCE
-
+        self.rs = 1e-4 # Mpc (pivot around m0=1e6)
+        
         # kext = float(k_ext(N,m,A,zl,zs,pixsize))
         # note that there is no more self.rsang or self.alphars
 
         ## LENS model and redshifts
+        # First we make a dictionary of convergence sheet masses
+        convergence_sheet_masses = {z:0 for z in self.redshift_list}
+        
         # In the unsorted list, we'll put the main lens first
-        lens_model_unsorted = ['SPEP'] + ['TNFW' for i in range(N)]
-        redshifts_unsorted = [self.zl] + list(self.redshift_list)
+        lens_model_unsorted = ['SPEP'] + ['TNFW' for i in range(N)] + (['CONVERGENCE' for _ in convergence_sheet_masses]
+                                                                       if any_mass_sheets else [])
+        redshifts_unsorted = [self.zl] + list(self.redshift_list) + (sorted(convergence_sheet_masses.keys())
+                                                                     if any_mass_sheets else [])
 
         # Then we sort everything
         sort_idx = np.argsort(redshifts_unsorted)
@@ -661,23 +764,55 @@ class CustomImage:
                                        z_source = self.zs,
                                        lens_redshift_list=redshifts_sorted,
                                        multi_plane=True)
-
+        
         # LENS kwargs
         self.kwargs_spep = {'theta_E': theta_lens, 'e1': e1, 'e2': e2, 
                             'gamma': gamma, 'center_x': center_lens_x, 'center_y': center_lens_y}
+        # todo: change from spep to sie
 
-        kwargs_unsorted = [self.kwargs_spep] # (+ will append interlopers)
-        for i in range(N):
+        kwargs_unsorted = [self.kwargs_spep] # (+ will append more)
+        #
+        for i in range(N): # (append interlopers)
             center_nfw_x = xpos_list[i]
             center_nfw_y = ypos_list[i]
 
-            rsang = float(rs_angle(self.redshift_list[i],self.rs))
-            alphars = float(alpha_s(self.m,self.rs,self.redshift_list[i],zs))
+            tau = 20 # assume 20 as default
+
+            rs_adjusted = self.rs * (self.mass_list[i]/1e6)**(1/3.)
             
+            rsang = float(rs_angle(self.redshift_list[i],rs_adjusted))
+            alphars = float(alpha_s_tnfw(self.mass_list[i],rs_adjusted,self.redshift_list[i],zs,tau))
+            # alphars = float(alpha_s(self.mass_list[i],self.rs,self.redshift_list[i],zs)) # old result
+            if i == 0:
+                print('new result of alpha_rs is', alpha_s_tnfw(self.mass_list[i],self.rs,self.redshift_list[i],zs,tau))
+                print('old result would have been', alpha_s(self.mass_list[i],self.rs,self.redshift_list[i],zs))
+
             kwargs_nfw = {'Rs':rsang, 'alpha_Rs':alphars,
-                          'r_trunc':20*rsang, # we'll stick with 20 for now
+                          'r_trunc':tau*rsang,
                           'center_x': center_nfw_x, 'center_y': center_nfw_y}
             kwargs_unsorted.append(kwargs_nfw)
+        #
+        if any_mass_sheets: # (append negative convergence sheets)
+            for i in range(N):
+                if self.mass_sheets[i]:
+                    convergence_sheet_masses[self.redshift_list[i]] += self.mass_list[i]
+            for z, m in sorted(convergence_sheet_masses.items()):
+                area_com = self.double_cone_width(z)**2 # kpc**2 comoving
+                area = area_com / (1+z)**2 # kpc**2 physical
+                sig = m/area # Msun / kpc**2
+
+                print('showing work')
+                print('z', z, 'm', m)
+                print('area_com', area_com)
+                print('area', area)
+                print('sig', sig)
+                
+                # our normalization is the formula from assuming that this redshift
+                # is the only lens
+                sig_cr = sigma_cr(z, self.zs).to(u.Msun/u.Mpc**2).value / 1000**2 # from Msun/Mpc**2 to Msun/kpc**2
+
+                kwargs_convergence_sheet = {'kappa_ext': -sig/sig_cr} # todo check this calculation
+                kwargs_unsorted.append(kwargs_convergence_sheet)
 
         self.kwargs_lens = [kwargs_unsorted[i] for i in sort_idx]
         
@@ -736,6 +871,7 @@ class CustomImage:
                                      source_model_class=self.light_model_source,
                                      lens_light_model_class=self.light_model_lens,
                                      kwargs_numerics=self.kwargs_numerics)
+
         # simulate image with the parameters we have defined above #
         self.image = self.imageModel.image(kwargs_lens=self.kwargs_lens,
                                            kwargs_source=self.kwargs_light_source,
