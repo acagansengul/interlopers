@@ -1,10 +1,13 @@
 To-do list
 ----------
 
+- Check what happens to power spectrum if we add one high-mass interloper
+
+
 + Check if the curl component really is just numerical (simple test would be doubling the number of pixels)
-- Check what happens if we try to take the Fourier transform of the convergence map
-  - Seems like removing the center pixels solves things?
-  - Do this again with a more realistic distribution of interlopers!
++ Check what happens if we try to take the Fourier transform of the convergence map
+  + Seems like removing the center pixels solves things?
+  + Do this again with a more realistic distribution of interlopers!
 - See if we can reproduce the effective mass ratio from the convergence maps alone
 
 

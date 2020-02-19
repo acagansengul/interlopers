@@ -76,14 +76,14 @@ def alpha_s_tnfw(m,rs,zd,zs,tau):
     # print('not correct, but ignoring mass factor (closer to correct measured convergence)')
     # mass_factor = 1
 
-    m_tnfw = m_phys / mass_factor
+    m_nfw = m_phys / mass_factor
     # the following code is supposed to match how lenstronomy works, but not necessarily our old `alpha_s`
     distl = ADD(0,zd).to(u.kpc)
 
     rs_phys = (rs * u.Mpc).to(u.kpc)
     rs_ang = (rs_phys / distl) * 648000/np.pi # arcsec
 
-    rho0 = m_tnfw / (2*rs_ang*rs_phys**2 * 2*np.pi) # this formula came from comparing formula 32 in Ana's paper with the function `density_2d` in lenstronomy
+    rho0 = m_nfw / (2*rs_ang*rs_phys**2 * 2*np.pi) # this formula came from comparing formula 32 in Ana's paper with the function `density_2d` in lenstronomy
     
     alpha_rs = rho0 * 4 * rs_ang**2 * (1 - np.log(2)) # this formula came from Simon's code, where rs was in arcsec
     # todo check that we handle correctly whether rs is angular (arcsec) or physical
@@ -95,7 +95,7 @@ def alpha_s_tnfw(m,rs,zd,zs,tau):
 
 
     # print('mass_factor', mass_factor)
-    # print('m_tnfw', m_tnfw)
+    # print('m_nfw', m_nfw)
     # print('rho0', rho0)
     # print('alpha_rs', alpha_rs)
     # print('sigma_cr', sigma_cr(zd,zs).to(u.Msun/u.kpc**2))
@@ -162,6 +162,16 @@ def autoshow(image, vmax=None, ext=None):
     plt.imshow(image, vmin=vmin, vmax=vmax, cmap='seismic', extent=extent)
     plt.colorbar()
 
+def measure_mass(convmat, zl, zs, ext):
+    # measure mass from convergence matrix
+    # ext is half the width of the image in arcsec
+    phys_width = 2*ext * np.pi/648000 * ADD(0, zl).to(u.kpc)
+    #print('phys width', phys_width)
+    pixnum = len(convmat) # might be off by -4 depending on method but whatever
+    pixsize_phys = phys_width / pixnum
+    twod_integral_conv = np.sum(convmat) * pixsize_phys**2
+    return twod_integral_conv * sigma_cr(zl, zs).to(u.Msun/u.kpc**2)    
+    
 """
 class DefaultImage:
     def __init__(self, N, seed=333, zl=0.2, zd=0.2, zs=1.0, near_ring=False):
@@ -768,7 +778,6 @@ class CustomImage:
         # LENS kwargs
         self.kwargs_spep = {'theta_E': theta_lens, 'e1': e1, 'e2': e2, 
                             'gamma': gamma, 'center_x': center_lens_x, 'center_y': center_lens_y}
-        # todo: change from spep to sie
 
         kwargs_unsorted = [self.kwargs_spep] # (+ will append more)
         #
@@ -778,14 +787,11 @@ class CustomImage:
 
             tau = 20 # assume 20 as default
 
-            rs_adjusted = self.rs * (self.mass_list[i]/1e6)**(1/3.)
+            rs_adjusted = self.rs * (self.mass_list[i]/1e6)**(1/3.) # adjusted according to physical mass
             
             rsang = float(rs_angle(self.redshift_list[i],rs_adjusted))
             alphars = float(alpha_s_tnfw(self.mass_list[i],rs_adjusted,self.redshift_list[i],zs,tau))
             # alphars = float(alpha_s(self.mass_list[i],self.rs,self.redshift_list[i],zs)) # old result
-            if i == 0:
-                print('new result of alpha_rs is', alpha_s_tnfw(self.mass_list[i],self.rs,self.redshift_list[i],zs,tau))
-                print('old result would have been', alpha_s(self.mass_list[i],self.rs,self.redshift_list[i],zs))
 
             kwargs_nfw = {'Rs':rsang, 'alpha_Rs':alphars,
                           'r_trunc':tau*rsang,
@@ -801,11 +807,11 @@ class CustomImage:
                 area = area_com / (1+z)**2 # kpc**2 physical
                 sig = m/area # Msun / kpc**2
 
-                print('showing work')
-                print('z', z, 'm', m)
-                print('area_com', area_com)
-                print('area', area)
-                print('sig', sig)
+                # print('showing work')
+                # print('z', z, 'm', m)
+                # print('area_com', area_com)
+                # print('area', area)
+                # print('sig', sig)
                 
                 # our normalization is the formula from assuming that this redshift
                 # is the only lens

@@ -182,7 +182,7 @@ individual_ps,tot_ps,kx,ky = twoD_ps(data=conv_list,pix_size=pix_size,rnge=rnge)
 #load a mask and keep only the right number of rings (depends on pixel number)
 
 # orig_mask = np.load('mask_1011.npy')
-orig_mask = np.load('mask_200.npy') # TODO: should take mask filename as input
+orig_mask = np.load('mask_%d.npy'%pix_num)
 bin_num = int((pix_num)/2 + 1)
 mask = []
 for i in orig_mask[:bin_num]:
