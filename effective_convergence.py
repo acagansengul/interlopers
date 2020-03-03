@@ -43,7 +43,7 @@ zs = 1.
 # pixnum, pixsize = 200, .008 # to match S. Birrer's paper (roughly)
 # ext = pixnum * pixsize / 2.
 pixnum = 200
-ext = .08 # should be .8 to match Simon's paper
+ext = 8. # should be .8 to match Simon's paper
 pixsize = 2*ext / pixnum
 print(pixsize)
 
@@ -310,7 +310,18 @@ def do_naive_interlopers():
                              mass_sheets=mass_sheets, main_theta=1.0)
     myimg_proj.calc_div_curl_5pt()
     
-
+    ## Calculate divmat semi-manually (so we can save in the middle) ##
+    myimg_proj.alphamat_x = np.zeros((pixnum, pixnum)) # initialize both alphamat
+    myimg_proj.alphamat_y = np.zeros((pixnum, pixnum))
+    for xpix in range(pixnum):
+        for ypix in range(pixnum):
+            myimg_proj.calc_alpha_pixel(xpix, ypix)
+        np.save('files/tmpintnaive_alphax_ext{}_theta{}.npy'.format(ext,theta), myimg_proj.alphamat_x)
+        np.save('files/tmpintnaive_alphay_ext{}_theta{}.npy'.format(ext,theta), myimg_proj.alphamat_y)
+        # insurance in case the calculation is stopped early
+    myimg_proj.recalc_div_curl_5pt()
+    
+    
     blankimg = CustomImage([], [], [], zl=zl, m=[], 
                            pixnum=pixnum, pixsize=pixsize, 
                            mass_sheets=[], main_theta=1.0)
@@ -397,8 +408,8 @@ def do_full(theta):
     np.save('files/kappa_full_ext{}_theta{}.npy'.format(ext,theta), 0.5*(myimg.divmat - blankimg.divmat))
     
 # do_subhalos()
-# do_naive_interlopers()
-do_full(1)
+do_naive_interlopers()
+#do_full(7)
     
 """
 
