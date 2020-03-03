@@ -13,6 +13,8 @@
 # In[1]:
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg') # only do this to run on the cluster
 import matplotlib.pyplot as plt
 # get_ipython().run_line_magic('matplotlib', 'inline')
 
@@ -41,7 +43,7 @@ zs = 1.
 # pixnum, pixsize = 200, .008 # to match S. Birrer's paper (roughly)
 # ext = pixnum * pixsize / 2.
 pixnum = 200
-ext = .08 # should be .8 to match Simon's paper
+ext = .8 # should be .8 to match Simon's paper
 pixsize = 2*ext / pixnum
 print(pixsize)
 
@@ -236,7 +238,7 @@ avg_nums_sub = np.array([quad(dNdm_sub, mass, bin_ratio * mass)[0] for mass in m
 
 
 def double_cone_angle(z, zl=zl, zs=zs):
-    # angle of how wide the interloeprs can be dispersed so that they'd show up in the final image (according to the double-prism projection)
+    # angle of how wide the interlopers can be dispersed so that they'd show up in the final image (according to the double-prism projection)
     
     # returns a ratio, 1 for z <= zl
     
@@ -245,65 +247,149 @@ def double_cone_angle(z, zl=zl, zs=zs):
     return double_cone(z, zl=zl, zs=zs) * com_l / com_z
 
 # Populate the subhalos
+def do_subhalos():
+    np.random.seed(145)
+    xs, ys, redshifts, masses = [], [], [], []
 
-np.random.seed(145)
-# n_planes = 10
+    rv_nums = poisson.rvs(avg_nums_sub) if len(avg_nums_sub) > 1 else [poisson.rvs(avg_nums_sub)]
+    xyext = ext
+    for mass, num in zip(mass_bins_sub, rv_nums):
+        for i in range(num):
+            xs.append(np.random.uniform(-xyext,xyext))
+            ys.append(np.random.uniform(-xyext,xyext))
+            redshifts.append(zl)
+            masses.append(mass)
+    print('number of subhalos', len(xs))
 
-xs, ys, redshifts, masses = [], [], [], []
+    now = datetime.datetime.now()
+    myimg_sub = CustomImage(xs, ys, redshifts, zl=zl, m=masses, pixnum=pixnum, pixsize=pixsize, mass_sheets=False)
+    print('time to generate myimg_sub:', datetime.datetime.now()-now)
+    now = datetime.datetime.now()
+    myimg_sub.calc_div_curl_5pt()
+    print('time to calc div curl for myimg_sub:', datetime.datetime.now()-now)
 
-rv_nums = poisson.rvs(avg_nums_sub) if len(avg_nums_sub) > 1 else [poisson.rvs(avg_nums_sub)]
-xyext = ext
-for mass, num in zip(mass_bins_sub, rv_nums):
-    for i in range(num):
-        xs.append(np.random.uniform(-xyext,xyext))
-        ys.append(np.random.uniform(-xyext,xyext))
-        redshifts.append(zl)
-        masses.append(mass)
-print('number of subhalos', len(xs))
+    blankimg = CustomImage([],[],[], zl=zl, pixnum=pixnum, pixsize=pixsize)
+    autoshow(blankimg.image)
+    blankimg.calc_div_curl_5pt();
 
+    plt.close()
+    autoshow(0.5*(myimg_sub.divmat - blankimg.divmat), ext=ext, vmax=.09)
+    plt.title(r'$\kappa_{sub}$ (single plane, CDM)')
+    plt.savefig('imgs/kappa_sub.png')
 
-# In[45]:
+    np.save('files/kappa_sub.npy', 0.5*(myimg_sub.divmat-blankimg.divmat))
 
+def do_naive_interlopers():
+    np.random.seed(145)
+    n_planes = 10
 
-# Counter(masses)
+    xs, ys, redshifts, masses = [], [], [], []
+    mass_sheets = []
+    #xyext = ext
 
+    # Interlopers!
+    z_planes = np.linspace(.01,.99,n_planes)
+    area_proportions = [double_cone(z)**2 for z in z_planes]
+    area_sum = np.sum(area_proportions)
 
-# In[ ]:
-
-
-now = datetime.datetime.now()
-myimg_sub = CustomImage(xs, ys, redshifts, zl=zl, m=masses, pixnum=pixnum, pixsize=pixsize, mass_sheets=False)
-print('time to generate myimg_sub:', datetime.datetime.now()-now)
-now = datetime.datetime.now()
-myimg_sub.calc_div_curl_5pt()
-print('time to calc div curl for myimg_sub:', datetime.datetime.now()-now)
-
-# In[21]:
-
-
-blankimg = CustomImage([],[],[], zl=zl, pixnum=pixnum, pixsize=pixsize)
-autoshow(blankimg.image)
-blankimg.calc_div_curl_5pt();
-
-
-# In[89]:
-
-
-# get_ipython().run_cell_magic('time', '', ';')
-
-
-# In[90]:
-
-plt.close()
-autoshow(myimg_sub.divmat - blankimg.divmat, ext=ext, vmax=.09)
-plt.title(r'$\kappa_{sub}$ (single plane, CDM)')
-plt.savefig('imgs/divmat_diff.png')
-
-np.save('files/kappa_sub.npy', 0.5*(myimg_sub.divmat-blankimg.divmat))
-
-## The end ##
+    for i, z_plane in enumerate(z_planes):
+        rv_nums = poisson.rvs(avg_nums_interlopers * area_proportions[i] / area_sum)
+        xyext = ext * double_cone_angle(z_plane) # `double_cone_angle` was commented out -- can't remember why
+        for mass, num in zip(mass_bins_interlopers, rv_nums):
+            for i in range(num):
+                xs.append(np.random.uniform(-xyext,xyext))
+                ys.append(np.random.uniform(-xyext,xyext))
+                redshifts.append(zl)
+                masses.append(mass)
+                mass_sheets.append(True)
+    print('number of interlopers', len(xs))
 
 
+    myimg_proj = CustomImage(xs,ys,redshifts, zl=zl, m=masses,
+                             pixnum=pixnum, pixsize=pixsize,
+                             mass_sheets=mass_sheets, main_theta=1.0)
+    myimg_proj.calc_div_curl_5pt()
+    
+
+    blankimg = CustomImage([], [], [], zl=zl, m=[], 
+                           pixnum=pixnum, pixsize=pixsize, 
+                           mass_sheets=[], main_theta=1.0)
+    blankimg.calc_div_curl_5pt()
+
+
+    # In[115]:
+
+
+    plt.close()
+    autoshow(0.5*(myimg_proj.divmat-blankimg.divmat), ext=ext, vmax=.09)
+    plt.title(r'$\kappa_{sub}$ (multi-plane Born)')
+    plt.savefig('imgs/kappa_intnaive.png')
+
+    np.save('files/kappa_intnaive.npy', 0.5*(myimg_proj.divmat - blankimg.divmat))
+
+def do_full(theta):
+    # TODO: fix sloppy interloper distribution
+    np.random.seed(145)
+    n_planes = 10
+
+    xs, ys, redshifts, masses = [], [], [], []
+    mass_sheets = []
+    #xyext = ext
+
+    z_planes = np.linspace(.01,.99,n_planes)
+    area_proportions = [double_cone(z)**2 for z in z_planes]
+    area_sum = np.sum(area_proportions)
+
+    # Interlopers
+    for i, z_plane in enumerate(z_planes):
+        rv_nums = poisson.rvs(avg_nums_interlopers * area_proportions[i] / area_sum)
+        #Note that we're being sloppy here and using the same mass function at all redshifts!!!
+        #TODO: fix!
+        xyext = ext * double_cone_angle(z_plane)
+        for mass, num in zip(mass_bins_interlopers, rv_nums):
+            for i in range(num):
+                xs.append(np.random.uniform(-xyext,xyext))
+                ys.append(np.random.uniform(-xyext,xyext))
+                redshifts.append(z_plane)
+                masses.append(mass)
+                mass_sheets.append(True)
+    print('number of interlopers', len(xs))
+    
+    # Subhalos
+    rv_nums = poisson.rvs(avg_nums_sub) if len(avg_nums_sub) > 1 else [poisson.rvs(avg_nums_sub)]
+    xyext = ext
+    for mass, num in zip(mass_bins_sub, rv_nums):
+        for i in range(num):
+            xs.append(np.random.uniform(-xyext,xyext))
+            ys.append(np.random.uniform(-xyext,xyext))
+            redshifts.append(zl)
+            masses.append(mass)
+            mass_sheets.append(False)
+    print('number of subhalos + interlopers', len(xs))
+
+    myimg = CustomImage(xs, ys, redshifts, zl=zl, m=masses, 
+                        pixnum=pixnum, pixsize=pixsize,
+                        mass_sheets=mass_sheets, main_theta=theta)
+    myimg.calc_div_curl_5pt()
+
+    blankimg = CustomImage([], [], [], zl=zl, m=[],
+                           pixnum=pixnum, pixsize=pixsize, 
+                           mass_sheets=[], main_theta=theta)
+    blankimg.calc_div_curl_5pt()
+
+    # Save results #
+    
+    plt.close()
+    autoshow(0.5*(myimg.divmat-blankimg.divmat), ext=ext, vmax=.09)
+    plt.title(r'$\kappa_{sub}$ (multi-plane Born)')
+    plt.savefig('imgs/kappa_full_theta{}.png'.format(theta))
+
+    np.save('files/kappa_full_theta{}.npy'.format(theta), 0.5*(myimg.divmat - blankimg.divmat))
+    
+# do_subhalos()
+# do_naive_interlopers()
+do_full(1)
+    
 """
 
 # In[91]:
@@ -331,103 +417,7 @@ np.save('files/kappa_sub.npy', 0.5*(myimg_sub.divmat-blankimg.divmat))
 
 # Populate the interlopers in projection (middle picture in Fig 2 of Birrer's paper)
 
-np.random.seed(145)
-n_planes = 10
 
-xs, ys, redshifts, masses = [], [], [], []
-mass_sheets = []
-#xyext = ext
-
-# Interlopers!
-z_planes = np.linspace(.01,.99,n_planes)
-area_proportions = [double_cone(z)**2 for z in z_planes]
-area_sum = np.sum(area_proportions)
-
-for i, z_plane in enumerate(z_planes):
-    rv_nums = poisson.rvs(avg_nums_interlopers * area_proportions[i] / area_sum)
-    xyext = ext # * double_cone_angle(z_plane)
-    # ^- I thought about multiplying this by 1.5 so we don't get weird boundary effects
-    #print(rv_nums)
-    for mass, num in zip(mass_bins_interlopers, rv_nums):
-        for i in range(num):
-            xs.append(np.random.uniform(-xyext,xyext))
-            ys.append(np.random.uniform(-xyext,xyext))
-            redshifts.append(zl)
-            masses.append(mass)
-            mass_sheets.append(True)
-print('number of interlopers', len(xs))
-
-# # Subhalos!
-# rv_nums = poisson.rvs(avg_nums_sub) if len(avg_nums_sub) > 1 else [poisson.rvs(avg_nums_sub)]
-# xyext = ext
-# for mass, num in zip(mass_bins_sub, rv_nums):
-#     for i in range(num):
-#         xs.append(np.random.uniform(-xyext,xyext))
-#         ys.append(np.random.uniform(-xyext,xyext))
-#         redshifts.append(zl)
-#         masses.append(mass)
-#         mass_sheets.append(False)
-# print('number of interlopers + subhalos', len(xs))
-
-
-# In[27]:
-
-
-get_ipython().run_line_magic('load_ext', 'line_profiler')
-
-
-# In[24]:
-
-
-get_ipython().run_cell_magic('time', '', 'myimg_proj = CustomImage(xs,ys,redshifts, zl=zl, m=masses,\n                         pixnum=pixnum, pixsize=pixsize,\n                         mass_sheets=mass_sheets, main_theta=1.0)')
-
-
-# In[ ]:
-
-
-get_ipython().run_cell_magic('time', '', 'myimg_proj.alphamat_x = np.zeros((pixnum, pixnum))\nmyimg_proj.alphamat_y = np.zeros((pixnum, pixnum))\nmyimg_proj.calc_alpha_pixel(0,0)')
-
-
-# In[113]:
-
-
-get_ipython().run_cell_magic('time', '', 'myimg_proj.calc_div_curl_5pt();')
-
-
-# In[114]:
-
-
-blankimg = CustomImage([], [], [], zl=zl, m=[], 
-                       pixnum=pixnum, pixsize=pixsize, 
-                       mass_sheets=[], main_theta=1.0)
-blankimg.calc_div_curl_5pt();
-
-
-# In[115]:
-
-
-autoshow(myimg_proj.divmat-blankimg.divmat, ext=ext, vmax=.08)
-#plt.title(r'$\kappa_{sub}$ (multi-plane Born)')
-#plt.savefig('imgs/feb11_mpborn_orig.png')
-
-
-# In[116]:
-
-
-#np.save('files/convmat_proj_5to8_press.npy', 0.5*(myimg_proj.divmat-blankimg.divmat))
-
-
-# In[32]:
-
-
-#np.save('files/convmat_proj_theta1.npy', 0.5*(myimg_proj.divmat - blankimg.divmat))
-
-
-# In[30]:
-
-
-autoshow(myimg_proj.divmat-blankimg.divmat, vmax=.02)
-plt.title(r'$\kappa_{sub}$ (multi-plane Born): High Contrast')
 
 
 # ### Finally, the actual image:
@@ -437,77 +427,6 @@ plt.title(r'$\kappa_{sub}$ (multi-plane Born): High Contrast')
 
 # Populate the interlopers and subhalos
 
-np.random.seed(145)
-n_planes = 10
-
-xs, ys, redshifts, masses = [], [], [], []
-mass_sheets = []
-#xyext = ext
-
-z_planes = np.linspace(.01,.99,n_planes)
-area_proportions = [double_cone(z)**2 for z in z_planes]
-area_sum = np.sum(area_proportions)
-
-# Interlopers
-for i, z_plane in enumerate(z_planes):
-    rv_nums = poisson.rvs(avg_nums_interlopers * area_proportions[i] / area_sum)
-    xyext = ext * double_cone_angle(z_plane)
-    # ^- I thought about multiplying this by 1.5 so we don't get weird boundary effects
-    #print(rv_nums)
-    for mass, num in zip(mass_bins_interlopers, rv_nums):
-        for i in range(num):
-            xs.append(np.random.uniform(-xyext,xyext))
-            ys.append(np.random.uniform(-xyext,xyext))
-            redshifts.append(z_plane)
-            masses.append(mass)
-            mass_sheets.append(True)
-print('number of interlopers', len(xs))
-# Subhalos
-# rv_nums = poisson.rvs(avg_nums_sub) if len(avg_nums_sub) > 1 else [poisson.rvs(avg_nums_sub)]
-# xyext = ext
-# for mass, num in zip(mass_bins_sub, rv_nums):
-#     for i in range(num):
-#         xs.append(np.random.uniform(-xyext,xyext))
-#         ys.append(np.random.uniform(-xyext,xyext))
-#         redshifts.append(zl)
-#         masses.append(mass)
-#         mass_sheets.append(False)
-# print('number of subhalos + interlopers', len(xs))
-
-
-# In[231]:
-
-
-from collections import Counter
-
-
-# In[232]:
-
-
-Counter(masses)
-
-
-# In[118]:
-
-
-myimg = CustomImage(xs, ys, redshifts, zl=zl, m=masses, 
-                    pixnum=pixnum, pixsize=pixsize,
-                    mass_sheets=mass_sheets, main_theta=1)
-
-
-# In[119]:
-
-
-get_ipython().run_cell_magic('time', '', 'myimg.calc_div_curl_5pt()\n0')
-
-
-# In[120]:
-
-
-blankimg = CustomImage([], [], [], zl=zl, m=[],
-                       pixnum=pixnum, pixsize=pixsize, 
-                       mass_sheets=[], main_theta=1)
-blankimg.calc_div_curl_5pt();
 
 
 # In[121]:
