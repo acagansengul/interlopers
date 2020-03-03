@@ -43,7 +43,7 @@ zs = 1.
 # pixnum, pixsize = 200, .008 # to match S. Birrer's paper (roughly)
 # ext = pixnum * pixsize / 2.
 pixnum = 200
-ext = .8 # should be .8 to match Simon's paper
+ext = .08 # should be .8 to match Simon's paper
 pixsize = 2*ext / pixnum
 print(pixsize)
 
@@ -370,21 +370,31 @@ def do_full(theta):
     myimg = CustomImage(xs, ys, redshifts, zl=zl, m=masses, 
                         pixnum=pixnum, pixsize=pixsize,
                         mass_sheets=mass_sheets, main_theta=theta)
-    myimg.calc_div_curl_5pt()
-
+    
+    ## Calculate divmat semi-manually (so we can save in the middle) ##
+    myimg.alphamat_x = np.zeros((pixnum, pixnum)) # initialize both alphamat
+    myimg.alphamat_y = np.zeros((pixnum, pixnum))
+    for xpix in range(pixnum):
+        for ypix in range(pixnum):
+            myimg.calc_alpha_pixel(xpix, ypix)
+        np.save('files/tmp_alphax_ext{}_theta{}.npy'.format(ext,theta), myimg.alphamat_x)
+        np.save('files/tmp_alphay_ext{}_theta{}.npy'.format(ext,theta), myimg.alphamat_y)
+        # insurance in case the calculation is stopped early
+    myimg.recalc_div_curl_5pt()
+        
     blankimg = CustomImage([], [], [], zl=zl, m=[],
                            pixnum=pixnum, pixsize=pixsize, 
                            mass_sheets=[], main_theta=theta)
     blankimg.calc_div_curl_5pt()
 
-    # Save results #
+    ## Save results ##
     
     plt.close()
     autoshow(0.5*(myimg.divmat-blankimg.divmat), ext=ext, vmax=.09)
     plt.title(r'$\kappa_{sub}$ (multi-plane Born)')
-    plt.savefig('imgs/kappa_full_theta{}.png'.format(theta))
+    plt.savefig('imgs/kappa_full_ext{}_theta{}.png'.format(ext, theta))
 
-    np.save('files/kappa_full_theta{}.npy'.format(theta), 0.5*(myimg.divmat - blankimg.divmat))
+    np.save('files/kappa_full_ext{}_theta{}.npy'.format(ext,theta), 0.5*(myimg.divmat - blankimg.divmat))
     
 # do_subhalos()
 # do_naive_interlopers()
