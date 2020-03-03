@@ -31,7 +31,7 @@ from scipy.stats import poisson
 
 from collections import Counter
 
-from helpers import CustomImage, autoshow, ADD, sigma_cr
+from helpers import CustomImage, autoshow, ADD, sigma_cr, PoolResults
 
 
 # In[25]:
@@ -43,7 +43,7 @@ zs = 1.
 # pixnum, pixsize = 200, .008 # to match S. Birrer's paper (roughly)
 # ext = pixnum * pixsize / 2.
 pixnum = 200
-ext = 8. # should be .8 to match Simon's paper
+ext = .08 # should be .8 to match Simon's paper
 pixsize = 2*ext / pixnum
 print(pixsize, flush=True)
 
@@ -246,11 +246,18 @@ def double_cone_angle(z, zl=zl, zs=zs):
     com_l = cosmo.comoving_distance(zl)
     return double_cone(z, zl=zl, zs=zs) * com_l / com_z
 
-# Populate the subhalos
+def compute_specific_x(myimg, xpix):
+    # Helper function to calculate alpha for a row of pixels (used by PoolResults)
+    for ypix in range(pixnum):
+        myimg.calc_alpha_pixel(xpix, ypix)
+    return xpix, None
+
+
 def do_subhalos():
     np.random.seed(145)
     xs, ys, redshifts, masses = [], [], [], []
 
+    # Populate the subhalos
     rv_nums = poisson.rvs(avg_nums_sub) if len(avg_nums_sub) > 1 else [poisson.rvs(avg_nums_sub)]
     xyext = ext
     for mass, num in zip(mass_bins_sub, rv_nums):
@@ -279,6 +286,8 @@ def do_subhalos():
 
     np.save('files/kappa_sub.npy', 0.5*(myimg_sub.divmat-blankimg.divmat))
 
+
+    
 def do_naive_interlopers():
     np.random.seed(145)
     n_planes = 10
@@ -313,14 +322,9 @@ def do_naive_interlopers():
     ## Calculate divmat semi-manually (so we can save in the middle) ##
     myimg_proj.alphamat_x = np.zeros((pixnum, pixnum)) # initialize both alphamat
     myimg_proj.alphamat_y = np.zeros((pixnum, pixnum))
-    
-    def compute_specific_x(xpix):
-        for ypix in range(pixnum):
-            myimg_proj.calc_alpha_pixel(xpix, ypix)
-        return xpix, None
             
     print('about to start pool', flush=True)
-    mypool = PoolResults(compute_specific_x, list(range(pixnum)))
+    mypool = PoolResults(compute_specific_x, [[myimg_proj, i] for i in range(pixnum)])
     print('finished pool', flush=True)
             
     myimg_proj.recalc_div_curl_5pt()    
