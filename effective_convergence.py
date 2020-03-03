@@ -45,7 +45,7 @@ zs = 1.
 pixnum = 200
 ext = 8. # should be .8 to match Simon's paper
 pixsize = 2*ext / pixnum
-print(pixsize)
+print(pixsize, flush=True)
 
 
 # In[26]:
@@ -302,7 +302,7 @@ def do_naive_interlopers():
                 redshifts.append(zl)
                 masses.append(mass)
                 mass_sheets.append(True)
-    print('number of interlopers', len(xs))
+    print('number of interlopers', len(xs), flush=True)
 
 
     myimg_proj = CustomImage(xs,ys,redshifts, zl=zl, m=masses,
@@ -313,14 +313,17 @@ def do_naive_interlopers():
     ## Calculate divmat semi-manually (so we can save in the middle) ##
     myimg_proj.alphamat_x = np.zeros((pixnum, pixnum)) # initialize both alphamat
     myimg_proj.alphamat_y = np.zeros((pixnum, pixnum))
-    for xpix in range(pixnum):
+    
+    def compute_specific_x(xpix):
         for ypix in range(pixnum):
             myimg_proj.calc_alpha_pixel(xpix, ypix)
-        np.save('files/tmpintnaive_alphax_ext{}_theta{}.npy'.format(ext,theta), myimg_proj.alphamat_x)
-        np.save('files/tmpintnaive_alphay_ext{}_theta{}.npy'.format(ext,theta), myimg_proj.alphamat_y)
-        # insurance in case the calculation is stopped early
-    myimg_proj.recalc_div_curl_5pt()
-    
+        return xpix, None
+            
+    print('about to start pool', flush=True)
+    mypool = PoolResults(compute_specific_x, list(range(pixnum)))
+    print('finished pool', flush=True)
+            
+    myimg_proj.recalc_div_curl_5pt()    
     
     blankimg = CustomImage([], [], [], zl=zl, m=[], 
                            pixnum=pixnum, pixsize=pixsize, 
@@ -364,7 +367,7 @@ def do_full(theta):
                 redshifts.append(z_plane)
                 masses.append(mass)
                 mass_sheets.append(True)
-    print('number of interlopers', len(xs))
+    print('number of interlopers', len(xs), flush=True)
     
     # Subhalos
     rv_nums = poisson.rvs(avg_nums_sub) if len(avg_nums_sub) > 1 else [poisson.rvs(avg_nums_sub)]
@@ -376,7 +379,7 @@ def do_full(theta):
             redshifts.append(zl)
             masses.append(mass)
             mass_sheets.append(False)
-    print('number of subhalos + interlopers', len(xs))
+    print('number of subhalos + interlopers', len(xs), flush=True)
 
     myimg = CustomImage(xs, ys, redshifts, zl=zl, m=masses, 
                         pixnum=pixnum, pixsize=pixsize,
