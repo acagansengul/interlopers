@@ -1360,7 +1360,7 @@ class PoolResults:
         with Pool() as pool:
             p_list = []
             for i, func_args in enumerate(new_args_list, start=len(self.args_list[0]) if len(self.args_list) > 0 else 0):
-                p = pool.apply_async(self.func, args=(i, *func_args), callback=self.callback)
+                p = pool.apply_async(self.func, args=func_args, callback=self.callback)
                 p_list.append(p)
                 
             for p in p_list: # I think this is redundant

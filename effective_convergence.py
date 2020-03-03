@@ -42,7 +42,7 @@ zl = 0.5
 zs = 1.
 # pixnum, pixsize = 200, .008 # to match S. Birrer's paper (roughly)
 # ext = pixnum * pixsize / 2.
-pixnum = 200
+pixnum = 10
 ext = .08 # should be .8 to match Simon's paper
 pixsize = 2*ext / pixnum
 print(pixsize, flush=True)
@@ -246,11 +246,18 @@ def double_cone_angle(z, zl=zl, zs=zs):
     com_l = cosmo.comoving_distance(zl)
     return double_cone(z, zl=zl, zs=zs) * com_l / com_z
 
+################################################################################
+
 def compute_specific_x(myimg, xpix):
     # Helper function to calculate alpha for a row of pixels (used by PoolResults)
+    alphax_list = []
+    alphay_list = []
+
     for ypix in range(pixnum):
         myimg.calc_alpha_pixel(xpix, ypix)
-    return xpix, None
+        alphax_list.append(myimg.alphamat_x[xpix, ypix])
+        alphay_list.append(myimg.alphamat_y[xpix, ypix])
+    return xpix, [alphax_list, alphay_list]
 
 
 def do_subhalos():
@@ -322,12 +329,14 @@ def do_naive_interlopers():
     ## Calculate divmat semi-manually (so we can save in the middle) ##
     myimg_proj.alphamat_x = np.zeros((pixnum, pixnum)) # initialize both alphamat
     myimg_proj.alphamat_y = np.zeros((pixnum, pixnum))
-            
     print('about to start pool', flush=True)
     mypool = PoolResults(compute_specific_x, [[myimg_proj, i] for i in range(pixnum)])
     print('finished pool', flush=True)
-            
-    myimg_proj.recalc_div_curl_5pt()    
+    pool_results = np.array(mypool.get_results_list())
+    myimg_proj.alphamat_x = pool_results[:,0,:] # first idx is xpix, second is x vs y, third is ypix
+    myimg_proj.alphamat_y = pool_results[:,1,:]
+    
+    myimg_proj.recalc_div_curl_5pt()
     
     blankimg = CustomImage([], [], [], zl=zl, m=[], 
                            pixnum=pixnum, pixsize=pixsize, 
