@@ -28,7 +28,7 @@ from lenstronomy.Data.psf import PSF
 from astropy.cosmology import FlatLambdaCDM
 import astropy.units as u
 
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 
 def ADD(z1,z2):
     ## This is a function that computes the angular diameter distance
@@ -882,13 +882,13 @@ class CustomImage:
                                      lens_light_model_class=self.light_model_lens,
                                      kwargs_numerics=self.kwargs_numerics)
 
-        print('about to generate image')
+        print('done')
+        
+    def calc_image(self):
         # simulate image with the parameters we have defined above #
         self.image = self.imageModel.image(kwargs_lens=self.kwargs_lens,
                                            kwargs_source=self.kwargs_light_source,
                                            kwargs_lens_light=self.kwargs_light_lens)#, kwargs_ps=kwargs_ps)
-
-        print('done')
 
     def calc_div_curl(self):
         # Calculates divergence and curl of alpha (from ray shooting)
@@ -1350,7 +1350,8 @@ class PoolResults:
         
     def run(self, new_args_list):
         # TODO: preprocessing step to remove anything redundant from the args_list
-
+        print('cpu count', cpu_count())
+        
         if len(new_args_list) == 0: return
         
         nargs = len(new_args_list[0])
@@ -1383,3 +1384,22 @@ class PoolResults:
         for k,v in self.results.items():
             results_list[k] = v
         return results_list
+
+
+################################################################################
+# Mask functions
+
+def isinmask(xpix, ypix, r, dr, pixsize, pixnum):
+    # r is the einstein radius, and we take pixels within r +- dr
+    # (sharp cutoff)
+    npix = np.sqrt((xpix-pixnum/2)**2 + (ypix-pixnum/2)**2)
+    pixdist = npix * pixsize
+    return (r - dr < pixdist < r + dr)
+
+def isinmask_smooth(xpix, ypix, r, dr, pixsize, pixnum):
+    # r is the einstein radius, and we take pixels within r +- dr
+    # gaussian smoothing
+    npix = np.sqrt((xpix-pixnum/2)**2 + (ypix-pixnum/2)**2)
+    pixdist = npix * pixsize
+    return np.exp(-(pixdist-r)**2/(2*dr**2))
+

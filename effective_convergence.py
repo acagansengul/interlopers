@@ -42,8 +42,8 @@ zl = 0.5
 zs = 1.
 # pixnum, pixsize = 200, .008 # to match S. Birrer's paper (roughly)
 # ext = pixnum * pixsize / 2.
-pixnum = 10
-ext = .08 # should be .8 to match Simon's paper
+pixnum = 200
+ext = 8 # should be .8 to match Simon's paper
 pixsize = 2*ext / pixnum
 print(pixsize, flush=True)
 
@@ -252,15 +252,22 @@ def compute_specific_x(myimg, xpix):
     # Helper function to calculate alpha for a row of pixels (used by PoolResults)
     alphax_list = []
     alphay_list = []
+    
+    if xpix in [199, 47, 198, 46, 197, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 33, 34, 32, 30, 28, 29, 27, 26, 25, 24, 22, 19, 21, 20, 18, 17, 16, 15, 13, 10, 11, 3, 14, 6, 9, 7, 8, 2, 12, 5, 0, 1, 4]:
+        return xpix, [None, None]
 
     for ypix in range(pixnum):
-        myimg.calc_alpha_pixel(xpix, ypix)
+        myimg.calc_alpha_pixel(xpix, ypix) # TODO put this back
         alphax_list.append(myimg.alphamat_x[xpix, ypix])
         alphay_list.append(myimg.alphamat_y[xpix, ypix])
+        
+    print('finished row', xpix, [alphax_list, alphay_list], flush=True)
+        
     return xpix, [alphax_list, alphay_list]
 
 
 def do_subhalos():
+    print('doing subhalos only')
     np.random.seed(145)
     xs, ys, redshifts, masses = [], [], [], []
 
@@ -273,13 +280,21 @@ def do_subhalos():
             ys.append(np.random.uniform(-xyext,xyext))
             redshifts.append(zl)
             masses.append(mass)
-    print('number of subhalos', len(xs))
+    print('number of subhalos', len(xs), flush=True)
 
     now = datetime.datetime.now()
     myimg_sub = CustomImage(xs, ys, redshifts, zl=zl, m=masses, pixnum=pixnum, pixsize=pixsize, mass_sheets=False)
-    print('time to generate myimg_sub:', datetime.datetime.now()-now)
+    print('time to generate myimg_sub:', datetime.datetime.now()-now, flush=True)
     now = datetime.datetime.now()
-    myimg_sub.calc_div_curl_5pt()
+    myimg_sub.alphamat_x = np.zeros((pixnum, pixnum))
+    myimg_sub.alphamat_y = np.zeros((pixnum, pixnum))
+    mypool = PoolResults(compute_specific_x, [[myimg_sub, i] for i in range(pixnum)])
+    pool_results = np.array(mypool.get_results_list())
+    print('pool results:', pool_results, flush=True)
+    myimg_sub.alphamat_x = pool_results[:,0,:]
+    myimg_sub.alphamat_y = pool_results[:,1,:]
+    
+
     print('time to calc div curl for myimg_sub:', datetime.datetime.now()-now)
 
     blankimg = CustomImage([],[],[], zl=zl, pixnum=pixnum, pixsize=pixsize)
@@ -324,7 +339,7 @@ def do_naive_interlopers():
     myimg_proj = CustomImage(xs,ys,redshifts, zl=zl, m=masses,
                              pixnum=pixnum, pixsize=pixsize,
                              mass_sheets=mass_sheets, main_theta=1.0)
-    myimg_proj.calc_div_curl_5pt()
+    #myimg_proj.calc_div_curl_5pt()
     
     ## Calculate divmat semi-manually (so we can save in the middle) ##
     myimg_proj.alphamat_x = np.zeros((pixnum, pixnum)) # initialize both alphamat
@@ -347,12 +362,12 @@ def do_naive_interlopers():
     # In[115]:
 
 
-    plt.close()
-    autoshow(0.5*(myimg_proj.divmat-blankimg.divmat), ext=ext, vmax=.09)
-    plt.title(r'$\kappa_{sub}$ (multi-plane Born)')
-    plt.savefig('imgs/kappa_intnaive.png')
+#     plt.close()
+#     autoshow(0.5*(myimg_proj.divmat-blankimg.divmat), ext=ext, vmax=.09)
+#     plt.title(r'$\kappa_{sub}$ (multi-plane Born)')
+#     plt.savefig('imgs/kappa_intnaive.png')
 
-    np.save('files/kappa_intnaive.npy', 0.5*(myimg_proj.divmat - blankimg.divmat))
+#     np.save('files/kappa_intnaive.npy', 0.5*(myimg_proj.divmat - blankimg.divmat))
 
 def do_full(theta):
     # TODO: fix sloppy interloper distribution

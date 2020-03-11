@@ -1,12 +1,13 @@
 #!/bin/bash
-#SBATCH -n 1               # Number of cores (should also specify -N?)
-#SBATCH -t 0-8          # Runtime in D-HH:MM, minimum of 10 minutes
+#SBATCH -n 32               # Number of cores (should also specify -N?)
+#SBATCH -t 0-4          # Runtime in D-HH:MM, minimum of 10 minutes
 #SBATCH -p test  # Partition to submit to
-#SBATCH --mem=50000           # Memory pool for all cores (see also --mem-per-cpu)
+#SBATCH --mem=8000           # Memory pool for all cores (see also --mem-per-cpu)
 #SBATCH -o cannon_out/myoutput_%j.out  # File to which STDOUT will be written, %j inserts jobid
 #SBATCH -e cannon_out/myerrors_%j.err  # File to which STDERR will be written, %j inserts jobid
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=atsang@g.harvard.edu
+
 
 
 export XDG_RUNTIME_DIR=/n/scratchlfs/dvorkin_lab/atsang/tmp
