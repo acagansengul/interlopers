@@ -213,7 +213,7 @@ for key in power_spectra.keys():
     ps = power_spectra[key][1:] 
     _,ind_curves = variance(individual_ps,ps,len(individual_ps),kx,ky,mask=mask,rnge=rnge,pix_num=pix_num,pix_size=pix_size_k,n=key)
 
-    dir2 = psdir + 'ind_curves_%s_%s_%s_%s' % (name,numb,pix_num,rnge)
+    dir2 = psdir + 'ind_curves_%s_%s_%s_%s.npy' % (name,numb,pix_num,rnge)
     np.save(dir2,ind_curves)
 
     print 'saved %s' % dir2

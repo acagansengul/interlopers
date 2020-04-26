@@ -170,6 +170,13 @@ def measure_mass(convmat, zl, zs, ext):
     pixsize_phys = phys_width / pixnum
     twod_integral_conv = np.sum(convmat) * pixsize_phys**2
     return twod_integral_conv * sigma_cr(zl, zs).to(u.Msun/u.kpc**2)    
+
+
+cosmo = FlatLambdaCDM(H0=70, Om0=0.316)
+def chi_to_z(chi, zmax=3.1):
+    return z_at_value(cosmo.comoving_distance, chi*u.kpc, zmax=zmax)
+def z_to_chi(z):
+    return cosmo.comoving_distance(z).to(u.kpc).value
     
 """
 class DefaultImage:
@@ -862,6 +869,7 @@ class CustomImage:
         self.pixel_grid = PixelGrid(**kwargs_pixel)
 
         # Setup PSF #
+        # (should not affect alpha calculations) #
         kwargs_psf = {'psf_type': 'GAUSSIAN',  # type of PSF model (supports 'GAUSSIAN' and 'PIXEL')
                       'fwhm': 0.01,  # full width at half maximum of the Gaussian PSF (in angular units)
                       'pixel_size': self.pixsize  # angular scale of a pixel (required for a Gaussian PSF to translate the FWHM into a pixel scale)
@@ -1403,3 +1411,13 @@ def isinmask_smooth(xpix, ypix, r, dr, pixsize, pixnum):
     pixdist = npix * pixsize
     return np.exp(-(pixdist-r)**2/(2*dr**2))
 
+def make_mask(width, ext, pixnum_plus_four):
+    # makes a sharp mask
+    pixnum = pixnum_plus_four - 4
+    
+    mymask = np.zeros((pixnum,pixnum))
+    for xpix in range(pixnum):
+        for ypix in range(pixnum):
+            mymask[xpix, ypix] = 1 if isinmask(xpix, ypix, 7/8*ext, width, 2*ext/pixnum, pixnum) else 0
+            
+    return mymask
