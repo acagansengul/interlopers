@@ -30,15 +30,15 @@ import astropy.units as u
 
 from multiprocessing import Pool, cpu_count
 
+cosmo = FlatLambdaCDM(H0=67.5, Om0=0.316)
+
 def ADD(z1,z2):
     ## This is a function that computes the angular diameter distance
     ## between two redshifts z1 and z2.
-    cosmo = FlatLambdaCDM(H0=70, Om0=0.316) 
     return cosmo.angular_diameter_distance_z1z2(z1,z2)
 
 def comdist(z):
     # Function computes the comoving distance to the given redshift
-    cosmo = FlatLambdaCDM(H0=70, Om0=0.316)
     return cosmo.comoving_distance(z)
 
 def sigma_cr(zd,zs):
@@ -172,7 +172,7 @@ def measure_mass(convmat, zl, zs, ext):
     return twod_integral_conv * sigma_cr(zl, zs).to(u.Msun/u.kpc**2)    
 
 
-cosmo = FlatLambdaCDM(H0=70, Om0=0.316)
+
 def chi_to_z(chi, zmax=3.1):
     return z_at_value(cosmo.comoving_distance, chi*u.kpc, zmax=zmax)
 def z_to_chi(z):
@@ -664,7 +664,7 @@ class CustomImage:
 
         return width.to(u.kpc).value
     
-    def __init__(self, xpos_list, ypos_list, redshift_list, m=None, zl=0.2, zs=1.0, pixsize=0.2, pixnum=200, mass_sheets=None, main_theta=0.3):
+    def __init__(self, xpos_list, ypos_list, redshift_list, m=None, zl=0.2, zs=1.0, pixsize=0.2, pixnum=200, mass_sheets=None, main_theta=0.3, qfactor=1):
         # change: used to take in `m` as a single mass for all interlopers, but
         # now this can also be a list of masses
         
@@ -699,6 +699,7 @@ class CustomImage:
         any_mass_sheets = np.any(self.mass_sheets)
             
         self.main_theta = main_theta
+        self.qfactor = qfactor
         
         ## SOURCE PROPERTIES ###############################################################################
         # r_sersic_source = 10.0
@@ -728,7 +729,7 @@ class CustomImage:
         ## LENS PROPERTIES #################################################################################
         theta_lens = self.main_theta # used to be 10.
         r_theta_lens = x_to_xi(theta_lens,zl)
-        e1, e2 = param_util.phi_q2_ellipticity(phi=-0.9, q=0.8)
+        e1, e2 = param_util.phi_q2_ellipticity(phi=-0.9, q=self.qfactor) # used to be q=0.8
         gamma = 2.
 
         center_lens_x, center_lens_y = 0.,0.
