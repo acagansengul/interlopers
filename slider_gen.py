@@ -214,21 +214,24 @@ def make_widget(limber_plat_mat, sub_mat, zrange, html_filename, smoothing=0):
                                           lenmode='fraction',
                                           yanchor='bottom',
                                           y=0,
-                                          x=.20)))
+                                          x=.20,
+                                          dtick=1)))
     fig.update_layout(coloraxis2=dict(colorscale=colorscale,
                                       colorbar=dict(
                                           len=.6,
                                           lenmode='fraction',
                                           yanchor='bottom',
                                           y=0,
-                                          x=.55)))
+                                          x=.55,
+                                          dtick=1)))
     fig.update_layout(coloraxis3=dict(colorscale='RdBu',
                                       colorbar=dict(
                                           len=.6,
                                           lenmode='fraction',
                                           yanchor='bottom',
                                           y=0,
-                                          x=.91)))
+                                          x=.91,
+                                          dtick=1)))
 
     color_start = -8
     color_end = -3
@@ -346,7 +349,7 @@ def make_widget(limber_plat_mat, sub_mat, zrange, html_filename, smoothing=0):
 
     sliders = [dict(
         active=0,
-        currentvalue={"prefix": r"f_sub: "},
+        currentvalue={"prefix": r"f_(sub, 0.5): "},
         pad={"t": 50},
         steps=steps
     )]
