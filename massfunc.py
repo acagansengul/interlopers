@@ -67,8 +67,7 @@ def calc_numbers(resl):
 
     # resl = 10 # number of redshift values
     zmin = 0.001
-    zmax = 3.001 # should end around z=3 at most (not 3.3)
-    #zmax = 1.501
+    zmax = 3.301
     zrange = np.linspace(zmin,zmax,resl)
 
 
@@ -105,12 +104,12 @@ def calc_numbers(resl):
 
 
     # Load Sheth-Tormen results
-    #h = .675
-    massesn = np.load('files/st_results/WIDE_massesn_ST.npy') # units solar masses
-    massfunc_matrix = np.load('files/st_results/WIDE_massfunc_ST.npy') /1000**3 # convert 1/Mpc^3 to 1/kpc^3
-    zlist = np.load('files/st_results/WIDE_redshifts_ST.npy') # redshifts
+    h = .675
+    massesn = np.load('files/st_results/WIDE_massesn_STnew.npy') # units solar masses
+    massfunc_matrix = np.load('files/st_results/WIDE_massfunc_STnew.npy') /1000**3 # convert 1/Mpc^3 to 1/kpc^3
+    zlist = np.load('files/st_results/WIDE_redshifts_STnew.npy') # redshifts
 
-    print('NOT multiplying by h^3 anymore!!!!!')
+    print('not multiplying by h^3 this time!')
 
     massfunc = interp2d(zlist, massesn, massfunc_matrix, bounds_error=False) # function of (z, mass)
 
@@ -233,11 +232,11 @@ def calc_plateaus():
 
     return limber_plats[:,:,0], sub_power_grid, zmin, zmax
                 
-int_nums, sub_nums, zmin_nums, zmax_nums = calc_numbers(resl=30)
+int_nums, sub_nums, zmin_nums, zmax_nums = calc_numbers(resl=50)
 int_plats, sub_plats, zmin_plats, zmax_plats = calc_plateaus()
 
 def draw_graph():
-    fig, axes = plt.subplots(4,3, figsize=(12,12))
+    fig, axes = plt.subplots(4,3, figsize=(10,12))
 
     im = {} # contourf dict
     # m = {} # colormap dict
@@ -252,97 +251,98 @@ def draw_graph():
     # mycmap = LinearSegmentedColormap.from_list('mycmap', ['gold', 'mediumturquoise', 'lightsalmon'])
     mycmap = 'inferno'
 
+    titlesize = 14
+    
     # CS = plt.contourf(X, Y, Z, 5, vmin = 0., vmax = 2., cmap=cm.coolwarm)
     # plt.title('Simplest default with labels')
     # m = plt.cm.ScalarMappable(cmap=cm.coolwarm)
     # m.set_array(Z)
     # m.set_clim(0., 2.)
     # plt.colorbar(m, boundaries=np.linspace(0, 2, 6))
-    
-    ### Numbers, fsub = 4e-3 ###
-    
-    ## Interlopers
-    im[0,0] = axes[0,0].contourf(np.log10(int_nums), extent=ext_nums, origin='lower',
-                                 levels=ni_levels, extend='min')
-    axes[0,0].set_title(r'$\log(N_{\rm I} / \mathrm{arcsec}^{-2})$', size=16)
-
-    ## Subhalos
-    im[0,1] = axes[0,1].contourf(np.log10(sub_nums), extent=ext_nums, origin='lower',
-                                 levels=ni_levels, extend='min')
-    axes[0,1].set_title(r'$\log( N_{\rm S} / \mathrm{arcsec}^{-2})$', size=16)
-
-    ## Ratio
-    im[0,2] = axes[0,2].contourf(np.log10(sub_nums/int_nums), extent=ext_nums, origin='lower',
-                                 levels=pr_levels, cmap='RdBu')
-    axes[0,2].set_title(r'$\log(N_{\rm S}/N_{\rm I})$', size=16)
-
-
-    ### Numbers, fsub = 2e-2 ###
-
-    sub_nums_fsub2 = sub_nums * 2e-2/fsub_std
-    
-    ## Interlopers
-    im[1,0] = axes[1,0].contourf(np.log10(int_nums), extent=ext_nums, origin='lower',
-                                 levels=ni_levels, extend='min')
-    axes[1,0].set_title(r'$\log(N_{\rm I} / \mathrm{arcsec}^{-2})$', size=16)
-
-    ## Subhalos
-    im[1,1] = axes[1,1].contourf(np.log10(sub_nums_fsub2), extent=ext_nums, origin='lower',
-                                 levels=ni_levels, extend='min')
-    axes[1,1].set_title(r'$\log( N_{\rm S} / \mathrm{arcsec}^{-2})$', size=16)
-
-    ## Ratio
-    im[1,2] = axes[1,2].contourf(np.log10(sub_nums_fsub2/int_nums), extent=ext_nums, origin='lower',
-                                 levels=pr_levels, cmap='RdBu')
-    cs = axes[1,2].contour(np.log10(sub_nums_fsub2/int_nums), extent=ext_nums, origin='lower',
-                           levels=[0], colors='black')
-    plt.clabel(cs, inline=1, fontsize=12, fmt='%1.1f', colors='black')
-    axes[1,2].set_title(r'$\log(N_{\rm S}/N_{\rm I})$', size=16)
-    
 
     ### Plateaus fsub = 4e-3 ####
 
     ## Interlopers
-    im[2,0] = axes[2,0].contourf(np.log10(int_plats), extent=ext_plats, origin='lower',
+    im[0,0] = axes[0,0].contourf(np.log10(int_plats), extent=ext_plats, origin='lower',
                                  levels=pi_levels, cmap=mycmap)
-    axes[2,0].set_title(r'$\log( P_{\rm I} / \mathrm{kpc}^2 )$', size=16)
+    axes[0,0].set_title(r'$\log_{10}( P_{\rm I, 0} / \mathrm{kpc}^2 )$', size=titlesize)
     
     ## Subhalos
-    im[2,1] = axes[2,1].contourf(np.log10(sub_plats), extent=ext_plats, origin='lower',
+    im[0,1] = axes[0,1].contourf(np.log10(sub_plats), extent=ext_plats, origin='lower',
                                  levels=pi_levels, cmap=mycmap)
-    axes[2,1].set_title(r'$\log( P_{\rm S} / \mathrm{kpc}^2 )$', size=16)
+    axes[0,1].set_title(r'$\log_{10}( P_{\rm S, 0} / \mathrm{kpc}^2 )$', size=titlesize)
 
     ## Ratio
-    im[2,2] = axes[2,2].contourf(np.log10(sub_plats/int_plats), extent=ext_plats, origin='lower',
+    im[0,2] = axes[0,2].contourf(np.log10(sub_plats/int_plats), extent=ext_plats, origin='lower',
                                  levels=pr_levels, cmap='RdBu')
-    cs = axes[3,2].contour(np.log10(sub_plats/int_plats), extent=ext_plats, origin='lower',
-                           levels=[0], colors='black')
-    axes[2,2].set_title(r'$\log( P_{\rm S} / P_{\rm I} )$', size=16)
+
+    axes[0,2].set_title(r'$\log_{10}( P_{\rm S, 0} / P_{\rm I, 0} )$', size=titlesize)
+
     
+    ### Numbers, fsub = 4e-3 ###
     
+    ## Interlopers
+    im[1,0] = axes[1,0].contourf(np.log10(int_nums), extent=ext_nums, origin='lower',
+                                 levels=ni_levels)
+    axes[1,0].set_title(r'$\log_{10}(N_{\rm I} / \mathrm{arcsec}^{-2})$', size=titlesize)
+
+    ## Subhalos
+    im[1,1] = axes[1,1].contourf(np.log10(sub_nums), extent=ext_nums, origin='lower',
+                                 levels=ni_levels)
+    axes[1,1].set_title(r'$\log_{10}( N_{\rm S} / \mathrm{arcsec}^{-2})$', size=titlesize)
+
+    ## Ratio
+    im[1,2] = axes[1,2].contourf(np.log10(sub_nums/int_nums), extent=ext_nums, origin='lower',
+                                 levels=pr_levels, cmap='RdBu')
+    axes[1,2].set_title(r'$\log_{10}(N_{\rm S}/N_{\rm I})$', size=titlesize)
+
+
     ### Plateaus fsub = 2e-2 ####
 
     sub_plats_fsub2 = sub_plats * 2e-2 / fsub_std
     
     ## Interlopers
-    im[3,0] = axes[3,0].contourf(np.log10(int_plats), extent=ext_plats, origin='lower',
+    im[2,0] = axes[2,0].contourf(np.log10(int_plats), extent=ext_plats, origin='lower',
                                  levels=pi_levels, cmap=mycmap)
-    axes[3,0].set_title(r'$\log( P_{\rm I} / \mathrm{kpc}^2 )$', size=16)
+    axes[2,0].set_title(r'$\log_{10}( P_{\rm I, 0} / \mathrm{kpc}^2 )$', size=titlesize)
     
     ## Subhalos
-    im[3,1] = axes[3,1].contourf(np.log10(sub_plats_fsub2), extent=ext_plats, origin='lower',
+    im[2,1] = axes[2,1].contourf(np.log10(sub_plats_fsub2), extent=ext_plats, origin='lower',
                                  levels=pi_levels, cmap=mycmap)
-    axes[3,1].set_title(r'$\log( P_{\rm S} / \mathrm{kpc}^2 )$', size=16)
+    axes[2,1].set_title(r'$\log_{10}( P_{\rm S, 0} / \mathrm{kpc}^2 )$', size=titlesize)
 
     ## Ratio
-    im[3,2] = axes[3,2].contourf(np.log10(sub_plats_fsub2/int_plats), extent=ext_plats, origin='lower',
+    im[2,2] = axes[2,2].contourf(np.log10(sub_plats_fsub2/int_plats), extent=ext_plats, origin='lower',
                                  levels=pr_levels, cmap='RdBu')
-    cs = axes[3,2].contour(np.log10(sub_plats_fsub2/int_plats), extent=ext_plats, origin='lower',
+    cs = axes[2,2].contour(np.log10(sub_plats_fsub2/int_plats), extent=ext_plats, origin='lower',
                            levels=[0], colors='black')
     # plt.clabel(cs, inline=1, fontsize=12, fmt='%1.1f', colors='black')
-    axes[3,2].set_title(r'$\log( P_{\rm S} / P_{\rm I} )$', size=16)
+    axes[2,2].set_title(r'$\log_{10}( P_{\rm S, 0} / P_{\rm I, 0} )$', size=titlesize)
+
     
+    ### Numbers, fsub = 2e-2 ###
+
+    sub_nums_fsub2 = sub_nums * 2e-2/fsub_std
     
+    ## Interlopers
+    im[3,0] = axes[3,0].contourf(np.log10(int_nums), extent=ext_nums, origin='lower',
+                                 levels=ni_levels)
+    axes[3,0].set_title(r'$\log_{10}(N_{\rm I} / \mathrm{arcsec}^{-2})$', size=titlesize)
+
+    ## Subhalos
+    im[3,1] = axes[3,1].contourf(np.log10(sub_nums_fsub2), extent=ext_nums, origin='lower',
+                                 levels=ni_levels)
+    axes[3,1].set_title(r'$\log_{10}( N_{\rm S} / \mathrm{arcsec}^{-2})$', size=titlesize)
+
+    ## Ratio
+    im[3,2] = axes[3,2].contourf(np.log10(sub_nums_fsub2/int_nums), extent=ext_nums, origin='lower',
+                                 levels=pr_levels, cmap='RdBu')
+    cs = axes[3,2].contour(np.log10(sub_nums_fsub2/int_nums), extent=ext_nums, origin='lower',
+                           levels=[0], colors='black')
+    plt.clabel(cs, inline=1, fontsize=12, fmt='%1.1f', colors='black')
+    axes[3,2].set_title(r'$\log_{10}(N_{\rm S}/N_{\rm I})$', size=titlesize)
+    
+
     
     ### All ###
     for i in range(3):
@@ -361,16 +361,17 @@ def draw_graph():
             axes[j,i].scatter(zlenslist3, zsourcelist3, s=size,
                               edgecolors='white', c='red', linewidths=lw,
                               label='JVAS B1938+666')
-            if j > 2:
-                axes[j,i].scatter(zlenslist4, zsourcelist4, s=size,
-                                  edgecolors='white', c='purple', linewidths=lw,
-                                  label='SDP.81')
+            axes[j,i].scatter(zlenslist4, zsourcelist4, s=size,
+                              edgecolors='white', c='purple', linewidths=lw,
+                              label='SDP.81')
 
             ## Axis labels and color bars
             axes[j,i].tick_params(axis='both', labelsize=12)
             axes[j,i].set_xticks([0,1,2,3])
             axes[j,i].set_yticks([0,1,2,3])
 
+            # axes[j,i].set_aspect('equal')
+            
             cbar = fig.colorbar(im[j,i], ax=axes[j,i])
             cbar.formatter.set_powerlimits((-2,2))
             cbar.ax.yaxis.set_offset_position('left')
@@ -378,17 +379,17 @@ def draw_graph():
             cbar.update_ticks()
             
     for j in range(4): # for each row
-        if j in [0,2]:
+        if j in [0,1]:
             text = '$f_{\\mathrm{sub},0.5} = 4\\times 10^{-3}$\n$z_s$'
         else:
             text = '$f_{\\mathrm{sub},0.5} = 2\\times 10^{-2}$\n$z_s$'
         axes[j, 0].set_ylabel(text, size=14)
 
-    axes[3,2].legend(loc='lower right', fontsize=9)
+    axes[0,2].legend(loc='lower right', fontsize=9)
         
     plt.tight_layout()
-    #plt.savefig('imgs/jun2_numbers.png')
-    plt.show()
+    plt.savefig('imgs/jun11_fullpage.pdf')
+    # plt.show()
 
 draw_graph()
     
